@@ -11,13 +11,15 @@ The AI Incident Intelligence Platform is an incremental monorepo for exploring o
 - `infrastructure/` is reserved for future Docker Compose and deployment assets.
 - `test-scenarios/` is reserved for future end-to-end and failure scenarios.
 - `docs/` contains project and phase documentation.
-- PostgreSQL is the persistence technology for the Order Service and is configured through environment variables.
+- PostgreSQL is the persistence technology for all services and is configured through environment variables.
 
 The root Maven project is an aggregator for the current Java services. Each service owns its own Spring Boot application and build configuration so later assignments can evolve services independently.
 
 ## Current Status
 
-Order Service, Payment Service, and Inventory Service are independently functional. They provide JPA-backed APIs with PostgreSQL configuration and isolated H2 integration tests. Inventory reservations use transactional row locking to prevent stock from being oversold. There is no Kafka, AI, RAG, anomaly detection, incident management, or dashboard functionality yet.
+Order Service, Payment Service, and Inventory Service are independently functional. Order creation can synchronously call Payment Service and then Inventory Service over REST, with configurable URLs, timeouts, and failure handling. They provide JPA-backed APIs with PostgreSQL configuration and isolated H2 integration tests. Inventory reservations use transactional row locking to prevent stock from being oversold. There is no Kafka, AI, RAG, anomaly detection, incident management, or dashboard functionality yet.
+
+For the integrated Order flow, configure `PAYMENT_SERVICE_URL` and `INVENTORY_SERVICE_URL` in addition to the Order Service database variables. Downstream timeout defaults are 2 seconds to connect and 3 seconds to read.
 
 ## Future Phases
 

@@ -37,6 +37,18 @@ public class Order {
         this.status = OrderStatus.CREATED;
     }
 
+    public void markPending() {
+        status = OrderStatus.PENDING;
+    }
+
+    public void markSuccess() {
+        status = OrderStatus.SUCCESS;
+    }
+
+    public void markFailed() {
+        status = OrderStatus.FAILED;
+    }
+
     @PrePersist
     void setCreatedAt() {
         if (createdAt == null) {

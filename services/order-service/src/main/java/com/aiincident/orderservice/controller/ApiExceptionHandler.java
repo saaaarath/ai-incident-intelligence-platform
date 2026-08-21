@@ -24,4 +24,9 @@ public class ApiExceptionHandler {
                 .orElse("Request validation failed");
         return ResponseEntity.badRequest().body(Map.of("error", message));
     }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, String>> handleIllegalArgument(IllegalArgumentException exception) {
+        return ResponseEntity.badRequest().body(Map.of("error", exception.getMessage()));
+    }
 }

@@ -1,0 +1,26 @@
+# Maven
+**/target/
+*.class
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Java
+*.log
+hs_err_pid*
+
+# Node / Vite (future dashboard)
+node_modules/
+dist/
+.npm/
+
+# Environment and local configuration
+.env
+.env.*
+!.env.example
+
+# OS
+.DS_Store
+Thumbs.db

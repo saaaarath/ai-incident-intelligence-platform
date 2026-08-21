@@ -21,6 +21,8 @@ Order Service, Payment Service, and Inventory Service are independently function
 
 For the integrated Order flow, configure `PAYMENT_SERVICE_URL` and `INVENTORY_SERVICE_URL` in addition to the Order Service database variables. Downstream timeout defaults are 2 seconds to connect and 3 seconds to read.
 
+The Compose stack publishes Order Service on host port `18080` by default. Set `ORDER_SERVICE_PORT` to use another available host port.
+
 ## Future Phases
 
 1. Extend the service domain APIs and PostgreSQL persistence.

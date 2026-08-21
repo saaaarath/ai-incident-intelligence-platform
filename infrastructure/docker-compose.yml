@@ -1,0 +1,78 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: incident_platform
+      POSTGRES_USER: incident_user
+      POSTGRES_PASSWORD: incident_password
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U incident_user -d incident_platform"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  payment-service:
+    build:
+      context: ..
+      dockerfile: services/payment-service/Dockerfile
+    environment:
+      PAYMENT_DB_URL: jdbc:postgresql://postgres:5432/incident_platform
+      PAYMENT_DB_USERNAME: incident_user
+      PAYMENT_DB_PASSWORD: incident_password
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/127.0.0.1/8080'"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  inventory-service:
+    build:
+      context: ..
+      dockerfile: services/inventory-service/Dockerfile
+    environment:
+      INVENTORY_DB_URL: jdbc:postgresql://postgres:5432/incident_platform
+      INVENTORY_DB_USERNAME: incident_user
+      INVENTORY_DB_PASSWORD: incident_password
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/127.0.0.1/8080'"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  order-service:
+    build:
+      context: ..
+      dockerfile: services/order-service/Dockerfile
+    environment:
+      ORDER_DB_URL: jdbc:postgresql://postgres:5432/incident_platform
+      ORDER_DB_USERNAME: incident_user
+      ORDER_DB_PASSWORD: incident_password
+      PAYMENT_SERVICE_URL: http://payment-service:8080
+      INVENTORY_SERVICE_URL: http://inventory-service:8080
+      DOWNSTREAM_CONNECT_TIMEOUT_MS: 2000
+      DOWNSTREAM_READ_TIMEOUT_MS: 3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      payment-service:
+        condition: service_healthy
+      inventory-service:
+        condition: service_healthy
+    ports:
+      - "${ORDER_SERVICE_PORT:-18080}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/127.0.0.1/8080'"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  postgres-data:

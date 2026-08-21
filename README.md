@@ -11,17 +11,17 @@ The AI Incident Intelligence Platform is an incremental monorepo for exploring o
 - `infrastructure/` is reserved for future Docker Compose and deployment assets.
 - `test-scenarios/` is reserved for future end-to-end and failure scenarios.
 - `docs/` contains project and phase documentation.
-- PostgreSQL is the planned persistence technology. It is not connected yet.
+- PostgreSQL is the persistence technology for the Order Service and is configured through environment variables.
 
 The root Maven project is an aggregator for the current Java services. Each service owns its own Spring Boot application and build configuration so later assignments can evolve services independently.
 
 ## Current Status
 
-This repository contains the foundational monorepo structure and minimal bootable service shells. There is no Kafka, AI, RAG, anomaly detection, incident management, dashboard functionality, or database integration yet.
+The Order Service is the first functional service. It provides order creation and retrieval backed by PostgreSQL configuration, with integration tests using an isolated H2 database. Payment Service and Inventory Service remain bootable shells. There is no Kafka, AI, RAG, anomaly detection, incident management, or dashboard functionality yet.
 
 ## Future Phases
 
-1. Add service domain APIs and PostgreSQL persistence.
+1. Extend the service domain APIs and PostgreSQL persistence.
 2. Add service observability and event transport.
 3. Build incident detection, correlation, and management workflows.
 4. Add AI and retrieval capabilities for incident intelligence.

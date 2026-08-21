@@ -17,7 +17,7 @@ The root Maven project is an aggregator for the current Java services. Each serv
 
 ## Current Status
 
-The Order Service and Payment Service are independently functional. Both provide JPA-backed creation and retrieval APIs with PostgreSQL configuration and isolated H2 integration tests. Inventory Service remains a bootable shell. There is no Kafka, AI, RAG, anomaly detection, incident management, or dashboard functionality yet.
+Order Service, Payment Service, and Inventory Service are independently functional. They provide JPA-backed APIs with PostgreSQL configuration and isolated H2 integration tests. Inventory reservations use transactional row locking to prevent stock from being oversold. There is no Kafka, AI, RAG, anomaly detection, incident management, or dashboard functionality yet.
 
 ## Future Phases
 

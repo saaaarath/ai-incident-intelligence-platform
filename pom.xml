@@ -13,6 +13,7 @@
     <description>Incremental monorepo foundation for AI-assisted incident intelligence.</description>
 
     <modules>
+        <module>common/operational-logging</module>
         <module>services/order-service</module>
         <module>services/payment-service</module>
         <module>services/inventory-service</module>

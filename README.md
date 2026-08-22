@@ -5,6 +5,7 @@ The AI Incident Intelligence Platform is an incremental monorepo for exploring o
 ## Architecture
 
 - `services/` contains independently deployable Java and Spring Boot services for orders, payments, and inventory.
+- `common/operational-logging/` contains the shared JSON operational event model used by all services.
 - `incident-engine/` is reserved for future incident processing and correlation.
 - `ai-engine/` is reserved for future AI and retrieval workflows.
 - `dashboard/` is reserved for a future React + Vite operator interface.
@@ -22,6 +23,10 @@ Order Service, Payment Service, and Inventory Service are independently function
 For the integrated Order flow, configure `PAYMENT_SERVICE_URL` and `INVENTORY_SERVICE_URL` in addition to the Order Service database variables. Downstream timeout defaults are 2 seconds to connect and 3 seconds to read.
 
 The Compose stack publishes Order Service on host port `18080` by default. Set `ORDER_SERVICE_PORT` to use another available host port.
+
+## Operational logging
+
+Business outcomes and failures are written through the common structured logger as one JSON object per log line. Each event contains `eventId`, `timestamp`, `service`, `level`, `eventType`, `traceId`, `message`, and `metadata`. Current event types include `ORDER_CREATED`, `PAYMENT_CREATED`, `PAYMENT_FAILED`, `INVENTORY_RESERVED`, `INVENTORY_RESERVATION_FAILED`, `DB_TIMEOUT`, and `SERVICE_UNAVAILABLE`. Logs remain local to each service for now; Kafka is not part of this phase.
 
 ## Future Phases
 

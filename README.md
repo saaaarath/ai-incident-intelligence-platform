@@ -18,11 +18,11 @@ The root Maven project is an aggregator for the current Java services. Each serv
 
 ## Current Status
 
-Order Service, Payment Service, and Inventory Service are independently functional. Order creation can synchronously call Payment Service and then Inventory Service over REST, with configurable URLs, timeouts, and failure handling. They provide JPA-backed APIs with PostgreSQL configuration and isolated H2 integration tests. Inventory reservations use transactional row locking to prevent stock from being oversold. There is no Kafka, AI, RAG, anomaly detection, incident management, or dashboard functionality yet.
+Order Service, Payment Service, and Inventory Service are independently functional. Order creation can synchronously call Payment Service and then Inventory Service over REST, with configurable URLs, timeouts, and failure handling. They provide JPA-backed APIs with PostgreSQL configuration and isolated H2 integration tests. Inventory reservations use transactional row locking to prevent stock from being oversold. Apache Kafka (KRaft mode) is configured as local infrastructure with standard topics (`application-logs`, `service-events`, `deployment-events`) and environment variable configuration across services; application behavior does not yet require Kafka for core operations. There is no AI, RAG, anomaly detection, incident management, or dashboard functionality yet.
 
 For the integrated Order flow, configure `PAYMENT_SERVICE_URL` and `INVENTORY_SERVICE_URL` in addition to the Order Service database variables. Downstream timeout defaults are 2 seconds to connect and 3 seconds to read.
 
-The Compose stack publishes Order Service on host port `18080` by default. Set `ORDER_SERVICE_PORT` to use another available host port.
+The Compose stack publishes Order Service on host port `18080` by default (set `ORDER_SERVICE_PORT` to change) and Kafka on host port `29092` by default (set `KAFKA_PORT` to change).
 
 ## Operational logging
 

@@ -5,4 +5,4 @@
 - Operational structured logging with standard JSON event schemas.
 - Request correlation via `X-Trace-Id` HTTP header, filter extraction/generation, MDC binding, client interceptors, and cross-service operational log correlation.
 - Controlled failure injection (`DB_FAILURE`, `LATENCY`, `SERVICE_UNAVAILABLE`, `ERROR_SPIKE`) via internal control API (`/internal/failures`) and configuration properties.
-
+- Local infrastructure with Docker Compose: PostgreSQL and Apache Kafka (KRaft mode) with predefined topics (`application-logs`, `service-events`, `deployment-events`) and environment variable configuration across services.

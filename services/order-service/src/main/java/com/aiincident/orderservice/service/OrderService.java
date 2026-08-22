@@ -46,19 +46,56 @@ public class OrderService {
 
         order.markPending();
         orderRepository.save(order);
+
+        // Step 1: Payment processing
         try {
             PaymentClient.PaymentResult payment = paymentClient.createPayment(order.getId(), request.amount());
             if (!payment.successful()) {
                 operationalLogger.warn("PAYMENT_FAILED", "Payment was declined", Map.of("orderId", order.getId()));
                 return fail(order);
             }
+        } catch (Exception exception) {
+            if (isTimeout(exception)) {
+                operationalLogger.error(
+                        "REQUEST_TIMEOUT", "Payment request timed out",
+                        Map.of("orderId", order.getId(), "downstream", "payment-service"), exception);
+                operationalLogger.error(
+                        "PAYMENT_FAILED", "Payment failed due to downstream timeout",
+                        Map.of("orderId", order.getId(), "reason", "timeout"), exception);
+            } else {
+                operationalLogger.error(
+                        "SERVICE_UNAVAILABLE", "Payment service unavailable",
+                        Map.of("orderId", order.getId(), "downstream", "payment-service"), exception);
+                operationalLogger.error(
+                        "PAYMENT_FAILED", "Payment downstream operation failed",
+                        Map.of("orderId", order.getId(), "reason", "downstream_failure"), exception);
+            }
+            return fail(order);
+        }
+
+        // Step 2: Inventory reservation
+        try {
             inventoryClient.reserve(request.productId(), request.quantity());
             order.markSuccess();
-        } catch (RuntimeException exception) {
-            operationalLogger.error(
-                    "SERVICE_UNAVAILABLE", "Order downstream operation failed", Map.of("orderId", order.getId()), exception);
-            order.markFailed();
+        } catch (Exception exception) {
+            if (isTimeout(exception)) {
+                operationalLogger.error(
+                        "REQUEST_TIMEOUT", "Inventory request timed out",
+                        Map.of("orderId", order.getId(), "downstream", "inventory-service"), exception);
+                operationalLogger.error(
+                        "INVENTORY_FAILURE", "Inventory reservation timed out",
+                        Map.of("orderId", order.getId(), "productId", request.productId(), "reason", "timeout"), exception);
+            } else {
+                operationalLogger.error(
+                        "SERVICE_UNAVAILABLE", "Inventory service unavailable",
+                        Map.of("orderId", order.getId(), "downstream", "inventory-service"), exception);
+                operationalLogger.error(
+                        "INVENTORY_FAILURE", "Inventory reservation failed",
+                        Map.of("orderId", order.getId(), "productId", request.productId()), exception);
+            }
+            return fail(order);
         }
+
         return OrderResponse.from(orderRepository.save(order));
     }
 
@@ -72,5 +109,20 @@ public class OrderService {
         return orderRepository.findById(id)
                 .map(OrderResponse::from)
                 .orElseThrow(() -> new OrderNotFoundException(id));
+    }
+
+    private boolean isTimeout(Throwable ex) {
+        Throwable current = ex;
+        while (current != null) {
+            if (current instanceof java.net.SocketTimeoutException
+                    || current instanceof java.util.concurrent.TimeoutException
+                    || current.getClass().getSimpleName().toLowerCase().contains("timeout")
+                    || (current.getMessage() != null && current.getMessage().toLowerCase().contains("timed out"))
+                    || (current.getMessage() != null && current.getMessage().toLowerCase().contains("timeout"))) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
     }
 }

@@ -108,4 +108,28 @@ class PaymentFailureInjectionTest {
         mockMvc.perform(delete("/internal/failures"))
                 .andExpect(status().isOk());
     }
+
+    @Test
+    void injectsLatencyWithConfigurableDuration() throws Exception {
+        mockMvc.perform(post("/internal/failures")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"type\":\"LATENCY\",\"latencyMs\":150}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.enabled").value(true))
+                .andExpect(jsonPath("$.type").value("LATENCY"))
+                .andExpect(jsonPath("$.latencyMs").value(150));
+
+        long start = System.currentTimeMillis();
+        mockMvc.perform(post("/payments")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"orderId\":50,\"amount\":\"10.00\"}"))
+                .andExpect(status().isCreated());
+        long elapsed = System.currentTimeMillis() - start;
+
+        assertThat(elapsed).isGreaterThanOrEqualTo(140L);
+
+        // Reset
+        mockMvc.perform(delete("/internal/failures"))
+                .andExpect(status().isOk());
+    }
 }

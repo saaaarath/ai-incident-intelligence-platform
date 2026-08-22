@@ -103,6 +103,7 @@ public class FailureInjectionService {
         switch (failureType) {
             case LATENCY -> {
                 long delayMs = currentLatencyMs.get();
+                logger.info("LATENCY_INJECTED", "Simulated latency injected", Map.of("failureType", "LATENCY", "latencyMs", delayMs));
                 try {
                     Thread.sleep(delayMs);
                 } catch (InterruptedException e) {

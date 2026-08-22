@@ -1,12 +1,13 @@
 package com.aiincident.logging;
 
+import com.aiincident.logging.trace.TraceConstants;
+import com.aiincident.logging.trace.TraceContext;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import org.slf4j.Logger;
-import org.slf4j.MDC;
 
 public final class StructuredLogger {
 
@@ -61,7 +62,7 @@ public final class StructuredLogger {
     }
 
     private String traceId() {
-        String traceId = MDC.get("traceId");
+        String traceId = TraceContext.getTraceId();
         return traceId == null || traceId.isBlank() ? UUID.randomUUID().toString() : traceId;
     }
 

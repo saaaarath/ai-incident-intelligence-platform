@@ -28,6 +28,14 @@ The Compose stack publishes Order Service on host port `18080` by default. Set `
 
 Business outcomes and failures are written through the common structured logger as one JSON object per log line. Each event contains `eventId`, `timestamp`, `service`, `level`, `eventType`, `traceId`, `message`, and `metadata`. Current event types include `ORDER_CREATED`, `PAYMENT_CREATED`, `PAYMENT_FAILED`, `INVENTORY_RESERVED`, `INVENTORY_RESERVATION_FAILED`, `DB_TIMEOUT`, and `SERVICE_UNAVAILABLE`. Logs remain local to each service for now; Kafka is not part of this phase.
 
+## Request Correlation
+
+Request correlation is maintained across the synchronous production flow:
+- Every incoming HTTP request is assigned a `traceId`. If the client provides an `X-Trace-Id` header, that trace ID is adopted; otherwise a new UUID is generated.
+- The `traceId` is bound to the logging MDC context for the duration of the request and returned to the client in the `X-Trace-Id` response header.
+- Downstream HTTP REST clients automatically propagate the active `traceId` via the `X-Trace-Id` header across service boundaries (`Order Service` -> `Payment Service` -> `Inventory Service`).
+- All structured operational log events generated during a request include the same `traceId`, allowing an entire business flow across services to be correlated with a single identifier.
+
 ## Future Phases
 
 1. Extend the service domain APIs and PostgreSQL persistence.

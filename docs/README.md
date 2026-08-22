@@ -1,5 +1,7 @@
 # Documentation
 
-This monorepo is developed incrementally. Documentation should describe only capabilities that exist in the current assignment and should identify planned work separately.
+## Implemented Capabilities
+- Synchronous business services: Order Service, Payment Service, Inventory Service.
+- Operational structured logging with standard JSON event schemas.
+- Request correlation via `X-Trace-Id` HTTP header, filter extraction/generation, MDC binding, client interceptors, and cross-service operational log correlation.
 
-Future assignments can add architecture decisions, API contracts, persistence notes, operational runbooks, and verification evidence here.

@@ -149,4 +149,57 @@ class OrderServiceApplicationTests {
 
             verify(inventoryClient, never()).reserve(any(), any(Integer.class));
             }
+
+            @Test
+            void createsOrderWithGeneratedTraceId() throws Exception {
+                org.slf4j.Logger slf4jLogger = org.slf4j.LoggerFactory.getLogger(com.aiincident.orderservice.service.OrderService.class);
+                ch.qos.logback.classic.Logger logbackLogger = (ch.qos.logback.classic.Logger) slf4jLogger;
+                ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent> listAppender = new ch.qos.logback.core.read.ListAppender<>();
+                listAppender.start();
+                logbackLogger.addAppender(listAppender);
+
+                try {
+                    org.springframework.test.web.servlet.MvcResult result = mockMvc.perform(post("/orders")
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content("{\"customerId\":\"customer-gen-trace\"}"))
+                            .andExpect(status().isCreated())
+                            .andExpect(header().exists("X-Trace-Id"))
+                            .andReturn();
+
+                    String traceId = result.getResponse().getHeader("X-Trace-Id");
+                    org.assertj.core.api.Assertions.assertThat(traceId).isNotBlank();
+
+                    org.assertj.core.api.Assertions.assertThat(listAppender.list).isNotEmpty();
+                    String loggedJson = listAppender.list.getFirst().getMessage();
+                    org.assertj.core.api.Assertions.assertThat(loggedJson).contains("\"traceId\":\"" + traceId + "\"");
+                    org.assertj.core.api.Assertions.assertThat(loggedJson).contains("\"eventType\":\"ORDER_CREATED\"");
+                } finally {
+                    logbackLogger.detachAppender(listAppender);
+                }
+            }
+
+            @Test
+            void createsOrderWithSuppliedTraceId() throws Exception {
+                org.slf4j.Logger slf4jLogger = org.slf4j.LoggerFactory.getLogger(com.aiincident.orderservice.service.OrderService.class);
+                ch.qos.logback.classic.Logger logbackLogger = (ch.qos.logback.classic.Logger) slf4jLogger;
+                ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent> listAppender = new ch.qos.logback.core.read.ListAppender<>();
+                listAppender.start();
+                logbackLogger.addAppender(listAppender);
+
+                try {
+                    mockMvc.perform(post("/orders")
+                                    .header("X-Trace-Id", "custom-order-trace-555")
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content("{\"customerId\":\"customer-supp-trace\"}"))
+                            .andExpect(status().isCreated())
+                            .andExpect(header().string("X-Trace-Id", "custom-order-trace-555"));
+
+                    org.assertj.core.api.Assertions.assertThat(listAppender.list).isNotEmpty();
+                    String loggedJson = listAppender.list.getFirst().getMessage();
+                    org.assertj.core.api.Assertions.assertThat(loggedJson).contains("\"traceId\":\"custom-order-trace-555\"");
+                    org.assertj.core.api.Assertions.assertThat(loggedJson).contains("\"eventType\":\"ORDER_CREATED\"");
+                } finally {
+                    logbackLogger.detachAppender(listAppender);
+                }
+            }
 }

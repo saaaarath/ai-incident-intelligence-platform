@@ -11,14 +11,30 @@ import org.slf4j.Logger;
 
 public final class StructuredLogger {
 
+    private static volatile LogEventPublisher defaultPublisher;
+
     private final Logger logger;
     private final ObjectMapper objectMapper;
     private final String service;
+    private final LogEventPublisher publisher;
+
+    public static void setDefaultPublisher(LogEventPublisher publisher) {
+        defaultPublisher = publisher;
+    }
+
+    public static LogEventPublisher getDefaultPublisher() {
+        return defaultPublisher;
+    }
 
     public StructuredLogger(Logger logger, ObjectMapper objectMapper, String service) {
+        this(logger, objectMapper, service, null);
+    }
+
+    public StructuredLogger(Logger logger, ObjectMapper objectMapper, String service, LogEventPublisher publisher) {
         this.logger = logger;
         this.objectMapper = objectMapper;
         this.service = service;
+        this.publisher = publisher;
     }
 
     public void info(String eventType, String message, Map<String, Object> metadata) {
@@ -58,6 +74,19 @@ public final class StructuredLogger {
             logger.warn(json);
         } else {
             logger.info(json);
+        }
+
+        publish(event, json);
+    }
+
+    private void publish(LogEvent event, String json) {
+        LogEventPublisher pub = (publisher != null) ? publisher : defaultPublisher;
+        if (pub != null) {
+            try {
+                pub.publish(event, json);
+            } catch (Exception ignored) {
+                // Publishing must never throw or disrupt application flow
+            }
         }
     }
 

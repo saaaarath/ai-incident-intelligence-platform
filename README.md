@@ -5,28 +5,28 @@ The AI Incident Intelligence Platform is an incremental monorepo for exploring o
 ## Architecture
 
 - `services/` contains independently deployable Java and Spring Boot services for orders, payments, and inventory.
-- `common/operational-logging/` contains the shared JSON operational event model used by all services.
-- `incident-engine/` is reserved for future incident processing and correlation.
+- `common/operational-logging/` contains the shared JSON operational event model, tracing, failure injection, and asynchronous Kafka log publisher used by all services.
+- `incident-engine/log-processor` is the Spring Boot service that consumes operational logs from Kafka, validates them, and persists them into PostgreSQL.
 - `ai-engine/` is reserved for future AI and retrieval workflows.
 - `dashboard/` is reserved for a future React + Vite operator interface.
-- `infrastructure/` is reserved for future Docker Compose and deployment assets.
+- `infrastructure/` contains Docker Compose, Kafka (KRaft), PostgreSQL, and deployment assets.
 - `test-scenarios/` is reserved for future end-to-end and failure scenarios.
 - `docs/` contains project and phase documentation.
 - PostgreSQL is the persistence technology for all services and is configured through environment variables.
 
-The root Maven project is an aggregator for the current Java services. Each service owns its own Spring Boot application and build configuration so later assignments can evolve services independently.
+The root Maven project is an aggregator for the current Java services and incident engine. Each service owns its own Spring Boot application and build configuration so later assignments can evolve services independently.
 
 ## Current Status
 
-Order Service, Payment Service, and Inventory Service are independently functional. Order creation can synchronously call Payment Service and then Inventory Service over REST, with configurable URLs, timeouts, and failure handling. They provide JPA-backed APIs with PostgreSQL configuration and isolated H2 integration tests. Inventory reservations use transactional row locking to prevent stock from being oversold. Apache Kafka (KRaft mode) is configured as local infrastructure with standard topics (`application-logs`, `service-events`, `deployment-events`) and environment variable configuration across services; application behavior does not yet require Kafka for core operations. There is no AI, RAG, anomaly detection, incident management, or dashboard functionality yet.
+Order Service, Payment Service, and Inventory Service are independently functional. Order creation can synchronously call Payment Service and then Inventory Service over REST, with configurable URLs, timeouts, and failure handling. They provide JPA-backed APIs with PostgreSQL configuration and isolated H2 integration tests. Inventory reservations use transactional row locking to prevent stock from being oversold. Apache Kafka (KRaft mode) is configured as local infrastructure with standard topics (`application-logs`, `service-events`, `deployment-events`). Services stream operational logs asynchronously to Kafka, and the `log-processor` consumes, validates, and persists them into the `application_logs` table in PostgreSQL. There is no AI, RAG, anomaly detection, incident management, or dashboard functionality yet.
 
 For the integrated Order flow, configure `PAYMENT_SERVICE_URL` and `INVENTORY_SERVICE_URL` in addition to the Order Service database variables. Downstream timeout defaults are 2 seconds to connect and 3 seconds to read.
 
-The Compose stack publishes Order Service on host port `18080` by default (set `ORDER_SERVICE_PORT` to change) and Kafka on host port `29092` by default (set `KAFKA_PORT` to change).
+The Compose stack publishes Order Service on host port `18080` (set `ORDER_SERVICE_PORT` to change), Log Processor on host port `18084` (set `LOG_PROCESSOR_PORT` to change), and Kafka on host port `29092` by default (set `KAFKA_PORT` to change).
 
 ## Operational logging
 
-Business outcomes and failures are written through the common structured logger as one JSON object per log line. Each event contains `eventId`, `timestamp`, `service`, `level`, `eventType`, `traceId`, `message`, and `metadata`. Current event types include `ORDER_CREATED`, `PAYMENT_CREATED`, `PAYMENT_FAILED`, `INVENTORY_RESERVED`, `INVENTORY_RESERVATION_FAILED`, `DB_TIMEOUT`, and `SERVICE_UNAVAILABLE`. Logs remain local to each service for now; Kafka is not part of this phase.
+Business outcomes and failures are written through the common structured logger as one JSON object per log line. Each event contains `eventId`, `timestamp`, `service`, `level`, `eventType`, `traceId`, `message`, and `metadata`. Current event types include `ORDER_CREATED`, `PAYMENT_CREATED`, `PAYMENT_FAILED`, `INVENTORY_RESERVED`, `INVENTORY_RESERVATION_FAILED`, `DB_TIMEOUT`, and `SERVICE_UNAVAILABLE`. Logs are written to SLF4J and simultaneously streamed to the `application-logs` Kafka topic.
 
 ## Request Correlation
 

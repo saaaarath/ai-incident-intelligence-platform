@@ -1,1 +1,3 @@
 com.aiincident.logging.trace.TraceAutoConfiguration
+com.aiincident.failure.FailureAutoConfiguration
+

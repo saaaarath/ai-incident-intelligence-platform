@@ -36,6 +36,17 @@ Request correlation is maintained across the synchronous production flow:
 - Downstream HTTP REST clients automatically propagate the active `traceId` via the `X-Trace-Id` header across service boundaries (`Order Service` -> `Payment Service` -> `Inventory Service`).
 - All structured operational log events generated during a request include the same `traceId`, allowing an entire business flow across services to be correlated with a single identifier.
 
+## Failure Injection
+
+A controlled failure-injection mechanism is available for demo and chaos simulation:
+- **Supported Modes**: `DB_FAILURE`, `LATENCY`, `SERVICE_UNAVAILABLE`, `ERROR_SPIKE`.
+- **Internal Control API**:
+  - `GET /internal/failures`: Inspect current failure status.
+  - `POST /internal/failures`: Enable failure mode (e.g. `{"type": "DB_FAILURE"}`, `{"type": "LATENCY", "latencyMs": 3000}`).
+  - `DELETE /internal/failures`: Disable failure injection, returning service to normal behavior immediately.
+- **Security & Isolation**: Control endpoints reside under `/internal/failures`, bypassed by failure injection filters, and configurable with `failure.injection.enabled` and optional `X-Internal-Token` validation.
+- Injected failures automatically emit structured operational log events (`DB_TIMEOUT`, `SERVICE_UNAVAILABLE`, `ERROR_SPIKE`) bearing the active request `traceId`.
+
 ## Future Phases
 
 1. Extend the service domain APIs and PostgreSQL persistence.

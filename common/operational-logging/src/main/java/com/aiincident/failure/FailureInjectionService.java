@@ -2,7 +2,9 @@ package com.aiincident.failure;
 
 import com.aiincident.logging.StructuredLogger;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -22,6 +24,9 @@ public class FailureInjectionService {
     private final AtomicReference<FailureType> currentFailureType = new AtomicReference<>(FailureType.NONE);
     private final AtomicLong currentLatencyMs = new AtomicLong(3000L);
 
+    /** Listeners notified on failure state changes. Thread-safe for concurrent registration. */
+    private final List<FailureLifecycleListener> lifecycleListeners = new CopyOnWriteArrayList<>();
+
     public FailureInjectionService(
             @Value("${failure.injection.enabled:true}") boolean globalEnabled,
             @Value("${failure.injection.security-token:}") String securityToken,
@@ -37,6 +42,13 @@ public class FailureInjectionService {
         FailureType type = parseFailureType(initialType);
         if (type != FailureType.NONE) {
             enableFailure(type, initialLatencyMs);
+        }
+    }
+
+    /** Register a listener to be notified when failure injection state changes. */
+    public void addLifecycleListener(FailureLifecycleListener listener) {
+        if (listener != null) {
+            lifecycleListeners.add(listener);
         }
     }
 
@@ -64,12 +76,14 @@ public class FailureInjectionService {
             currentLatencyMs.set(latencyMs);
         }
         failureActive.set(true);
+        notifyEnabled(type);
         return getFailureConfig();
     }
 
     public FailureConfigResponse disableFailure() {
         failureActive.set(false);
         currentFailureType.set(FailureType.NONE);
+        notifyDisabled();
         return getFailureConfig();
     }
 
@@ -107,7 +121,33 @@ public class FailureInjectionService {
                 logger.error("ERROR_SPIKE", "Simulated internal error spike", Map.of("failureType", "ERROR_SPIKE"), null);
                 throw new SimulatedErrorSpikeException("Simulated internal error spike");
             }
+            case CONNECTION_POOL_EXHAUSTED -> {
+                // CONNECTION_POOL_EXHAUSTED is handled by the service layer via
+                // ConnectionPoolExhaustionSimulator — the filter does not block the request
+                // so that the realistic failure path through JPA is exercised.
+            }
             default -> {
+            }
+        }
+    }
+
+    // ---- private helpers ----
+
+    private void notifyEnabled(FailureType type) {
+        for (FailureLifecycleListener listener : lifecycleListeners) {
+            try {
+                listener.onFailureEnabled(type);
+            } catch (Exception ignored) {
+                // Listener errors must not destabilise the control path.
+            }
+        }
+    }
+
+    private void notifyDisabled() {
+        for (FailureLifecycleListener listener : lifecycleListeners) {
+            try {
+                listener.onFailureDisabled();
+            } catch (Exception ignored) {
             }
         }
     }

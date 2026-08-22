@@ -39,4 +39,9 @@ public class ApiExceptionHandler {
     public ResponseEntity<Map<String, String>> handleSimulatedErrorSpike(com.aiincident.failure.SimulatedErrorSpikeException exception) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", exception.getMessage()));
     }
+
+    @ExceptionHandler(com.aiincident.failure.pool.ConnectionPoolExhaustedException.class)
+    public ResponseEntity<Map<String, String>> handleConnectionPoolExhausted(com.aiincident.failure.pool.ConnectionPoolExhaustedException exception) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(Map.of("error", exception.getMessage()));
+    }
 }

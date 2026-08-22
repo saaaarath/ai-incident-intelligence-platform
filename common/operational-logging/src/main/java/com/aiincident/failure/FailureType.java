@@ -5,5 +5,6 @@ public enum FailureType {
     DB_FAILURE,
     LATENCY,
     SERVICE_UNAVAILABLE,
-    ERROR_SPIKE
+    ERROR_SPIKE,
+    CONNECTION_POOL_EXHAUSTED
 }

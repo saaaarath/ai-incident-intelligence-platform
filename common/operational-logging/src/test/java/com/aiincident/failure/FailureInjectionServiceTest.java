@@ -92,4 +92,36 @@ class FailureInjectionServiceTest {
         assertThat(service.validateSecurityToken("invalid-token")).isFalse();
         assertThat(service.validateSecurityToken(null)).isFalse();
     }
+
+    @Test
+    void connectionPoolExhaustedTypeActivatesWithoutThrowingFromFilter() {
+        service.enableFailure(FailureType.CONNECTION_POOL_EXHAUSTED, null);
+        assertThat(service.isFailureActive()).isTrue();
+        assertThat(service.getFailureConfig().type()).isEqualTo(FailureType.CONNECTION_POOL_EXHAUSTED);
+
+        // maybeInjectFailure must NOT throw for this type — the filter passes through
+        // and the real failure happens in PaymentService via the pool simulator.
+        service.maybeInjectFailure();
+    }
+
+    @Test
+    void lifecycleListenerReceivesEnabledAndDisabledNotifications() {
+        java.util.List<String> events = new java.util.ArrayList<>();
+        service.addLifecycleListener(new FailureLifecycleListener() {
+            @Override
+            public void onFailureEnabled(FailureType type) {
+                events.add("enabled:" + type.name());
+            }
+
+            @Override
+            public void onFailureDisabled() {
+                events.add("disabled");
+            }
+        });
+
+        service.enableFailure(FailureType.CONNECTION_POOL_EXHAUSTED, null);
+        service.disableFailure();
+
+        assertThat(events).containsExactly("enabled:CONNECTION_POOL_EXHAUSTED", "disabled");
+    }
 }

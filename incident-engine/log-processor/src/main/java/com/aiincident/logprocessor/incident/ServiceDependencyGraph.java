@@ -1,10 +1,14 @@
 package com.aiincident.logprocessor.incident;
 
+import com.aiincident.logprocessor.dependency.ServiceDependency;
+import com.aiincident.logprocessor.dependency.ServiceDependencyService;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
@@ -14,18 +18,26 @@ import org.springframework.stereotype.Component;
 @Component
 public class ServiceDependencyGraph {
 
-    // Adjacency list: service -> downstream dependencies called by that service
+    private final ServiceDependencyService dependencyService;
+
+    // In-memory fallback adjacency lists:
     private final Map<String, Set<String>> downstreamDependencies = new HashMap<>();
-    // Reverse adjacency list: service -> upstream callers that depend on this service
     private final Map<String, Set<String>> upstreamCallers = new HashMap<>();
 
     public ServiceDependencyGraph() {
-        // Default microservice architecture topologies in this platform:
-        // order-service calls payment-service and inventory-service
+        this(null);
+    }
+
+    @Autowired
+    public ServiceDependencyGraph(@Autowired(required = false) ServiceDependencyService dependencyService) {
+        this.dependencyService = dependencyService;
+
+        // Default initial dependencies
         addDependency("order-service", "payment-service");
-        addDependency("order-service", "inventory-service");
+        addDependency("payment-service", "inventory-service");
         addDependency("payment-service", "postgres");
         addDependency("payment-service", "database");
+        addDependency("order-service", "inventory-service");
         addDependency("inventory-service", "postgres");
         addDependency("inventory-service", "database");
     }
@@ -46,6 +58,10 @@ public class ServiceDependencyGraph {
             return false;
         }
 
+        if (dependencyService != null) {
+            return dependencyService.areServicesRelated(serviceA, serviceB);
+        }
+
         String a = serviceA.toLowerCase().trim();
         String b = serviceB.toLowerCase().trim();
 
@@ -53,7 +69,6 @@ public class ServiceDependencyGraph {
             return true;
         }
 
-        // Direct downstream or upstream
         if (getDownstream(a).contains(b) || getUpstream(a).contains(b)) {
             return true;
         }
@@ -61,15 +76,30 @@ public class ServiceDependencyGraph {
             return true;
         }
 
-        // Check transitive dependencies
         return isTransitivelyConnected(a, b);
     }
 
     public Set<String> getDownstream(String service) {
+        if (dependencyService != null) {
+            List<ServiceDependency> list = dependencyService.getDownstream(service);
+            Set<String> set = new HashSet<>();
+            for (ServiceDependency d : list) {
+                set.add(d.getTargetService());
+            }
+            return set;
+        }
         return downstreamDependencies.getOrDefault(service.toLowerCase().trim(), Collections.emptySet());
     }
 
     public Set<String> getUpstream(String service) {
+        if (dependencyService != null) {
+            List<ServiceDependency> list = dependencyService.getUpstream(service);
+            Set<String> set = new HashSet<>();
+            for (ServiceDependency d : list) {
+                set.add(d.getSourceService());
+            }
+            return set;
+        }
         return upstreamCallers.getOrDefault(service.toLowerCase().trim(), Collections.emptySet());
     }
 

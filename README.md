@@ -118,6 +118,25 @@ A normalization and fingerprinting engine groups equivalent operational failures
   - `GET /api/fingerprints/groups`: Retrieve log events grouped by error fingerprint.
   - `GET /api/incidents?fingerprint=...`: Filter tracked incidents by error fingerprint hash.
 
+## Service Dependency Graph
+
+A maintainable PostgreSQL-backed dependency graph models microservice topologies without Neo4j:
+- **Initial Topologies**:
+  - `Order Service` $\rightarrow$ `Payment Service`
+  - `Payment Service` $\rightarrow$ `Inventory Service`
+  - `Payment Service` $\rightarrow$ `PostgreSQL`
+  - `Order Service` $\rightarrow$ `Inventory Service`
+  - `Inventory Service` $\rightarrow$ `PostgreSQL`
+- **Database Model**: Stored in `service_dependencies` table with fields `id`, `sourceService`, `targetService`, `dependencyType` (`HTTP_REST`, `DATABASE`, `MESSAGE_QUEUE`, `GRPC`), `criticality`, and `description`.
+- **Graph & Topological Traversal**: Computes direct downstream dependencies, upstream callers, and full transitive reachability.
+- **REST Endpoints**:
+  - `GET /api/dependencies`: Retrieve all configured service dependencies.
+  - `GET /api/dependencies/{service}`: Retrieve full topology (upstream, downstream, all related) for a service.
+  - `GET /api/dependencies/{service}/downstream`: List downstream services called by this service.
+  - `GET /api/dependencies/{service}/upstream`: List upstream callers that depend on this service.
+  - `POST /api/dependencies`: Register or update a service dependency.
+  - `DELETE /api/dependencies`: Remove a dependency link.
+
 ## Future Phases
 
 1. Extend the service domain APIs and PostgreSQL persistence.

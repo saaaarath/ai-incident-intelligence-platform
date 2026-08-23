@@ -4,6 +4,8 @@ import com.aiincident.logprocessor.anomaly.AnomalySeverity;
 import com.aiincident.logprocessor.entity.ProcessedLogEvent;
 import com.aiincident.logprocessor.fingerprint.ErrorFingerprint;
 import com.aiincident.logprocessor.fingerprint.ErrorFingerprintGenerator;
+import com.aiincident.logprocessor.rca.PrimaryFailureAnalysis;
+import com.aiincident.logprocessor.rca.PrimaryFailureAnalyzer;
 import com.aiincident.logprocessor.repository.LogEventRepository;
 import java.time.Duration;
 import java.time.Instant;
@@ -41,6 +43,7 @@ public class IncidentCorrelationService {
     private final ServiceDependencyGraph dependencyGraph;
     private final EventTypeClassifier eventTypeClassifier;
     private final ErrorFingerprintGenerator fingerprintGenerator;
+    private final PrimaryFailureAnalyzer primaryFailureAnalyzer;
 
     public IncidentCorrelationService(
             IncidentRepository incidentRepository,
@@ -49,7 +52,7 @@ public class IncidentCorrelationService {
             IncidentProperties properties,
             ServiceDependencyGraph dependencyGraph,
             EventTypeClassifier eventTypeClassifier) {
-        this(incidentRepository, evidenceRepository, logEventRepository, properties, dependencyGraph, eventTypeClassifier, new ErrorFingerprintGenerator());
+        this(incidentRepository, evidenceRepository, logEventRepository, properties, dependencyGraph, eventTypeClassifier, new ErrorFingerprintGenerator(), null);
     }
 
     @Autowired
@@ -60,7 +63,8 @@ public class IncidentCorrelationService {
             IncidentProperties properties,
             ServiceDependencyGraph dependencyGraph,
             EventTypeClassifier eventTypeClassifier,
-            @Autowired(required = false) ErrorFingerprintGenerator fingerprintGenerator) {
+            @Autowired(required = false) ErrorFingerprintGenerator fingerprintGenerator,
+            @Autowired(required = false) PrimaryFailureAnalyzer primaryFailureAnalyzer) {
         this.incidentRepository = incidentRepository;
         this.evidenceRepository = evidenceRepository;
         this.logEventRepository = logEventRepository;
@@ -68,6 +72,7 @@ public class IncidentCorrelationService {
         this.dependencyGraph = dependencyGraph;
         this.eventTypeClassifier = eventTypeClassifier;
         this.fingerprintGenerator = fingerprintGenerator != null ? fingerprintGenerator : new ErrorFingerprintGenerator();
+        this.primaryFailureAnalyzer = primaryFailureAnalyzer;
     }
 
     /**
@@ -170,6 +175,18 @@ public class IncidentCorrelationService {
         );
         evidenceRepository.save(evidence);
         incident.addEvidence(evidence);
+
+        // 4. If primaryFailureAnalyzer is present, refine rootService using multi-factor RCA
+        if (primaryFailureAnalyzer != null && incident.getEvidence().size() > 1) {
+            PrimaryFailureAnalysis rca = primaryFailureAnalyzer.analyzeEvidence(incident.getId(), incident.getEvidence(), incident.getPrimaryService());
+            if (rca.primaryCandidate() != null && rca.primaryCandidate().service() != null) {
+                String analyzedRoot = rca.primaryCandidate().service();
+                if (!analyzedRoot.equalsIgnoreCase(incident.getRootService())) {
+                    incident.setRootService(analyzedRoot);
+                    incident = incidentRepository.save(incident);
+                }
+            }
+        }
 
         return Optional.of(incident);
     }

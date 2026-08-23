@@ -137,6 +137,19 @@ A maintainable PostgreSQL-backed dependency graph models microservice topologies
   - `POST /api/dependencies`: Register or update a service dependency.
   - `DELETE /api/dependencies`: Remove a dependency link.
 
+## Primary Failure vs Downstream Symptoms (Deterministic RCA)
+
+A multi-factor scoring engine distinguishes originating primary failures from downstream cascading symptoms without an LLM:
+- **Deterministic 4-Factor Scoring Model (0 - 100 points)**:
+  - **Temporal Precedence (0 - 40 pts)**: Earlier initial anomalies receive maximum points; subsequent failures decay proportionally over the cascade duration.
+  - **Dependency Topology Position (0 - 30 pts)**: Leaf/sink dependencies (e.g. `PostgreSQL`, `Database`) and depended-upon callee services receive caller-support bonuses; upstream callers depending on already failing downstream services receive symptom penalties.
+  - **Error Severity (0 - 20 pts)**: Weighted by maximum observed event severity (`CRITICAL`=20, `HIGH`=15, `MEDIUM`=10, `LOW`=5).
+  - **Frequency & Error Concentration (0 - 10 pts)**: Error burst density and event volume relative to the overall incident window.
+- **Root Cause & Symptom Categorization**: Automatically ranks candidate services, identifies the highest-scoring candidate as the `primary` root cause, assigns a confidence level (`HIGH`, `MEDIUM`, `LOW`), tags downstream affected services as `symptoms`, and generates deterministic reasoning.
+- **REST Endpoints**:
+  - `GET /incidents/{id}/primary-failure` (or `GET /api/incidents/{id}/primary-failure`): Analyze an incident and return the primary failure candidate, confidence, ranked scores, and symptom list.
+  - `POST /api/incidents/analyze-primary-failure`: On-demand primary failure analysis for an arbitrary collection of evidence events.
+
 ## Future Phases
 
 1. Extend the service domain APIs and PostgreSQL persistence.

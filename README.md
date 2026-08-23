@@ -45,7 +45,15 @@ A controlled failure-injection mechanism is available for demo and chaos simulat
   - `POST /internal/failures`: Enable failure mode (e.g. `{"type": "DB_FAILURE"}`, `{"type": "LATENCY", "latencyMs": 3000}`).
   - `DELETE /internal/failures`: Disable failure injection, returning service to normal behavior immediately.
 - **Security & Isolation**: Control endpoints reside under `/internal/failures`, bypassed by failure injection filters, and configurable with `failure.injection.enabled` and optional `X-Internal-Token` validation.
-- Injected failures automatically emit structured operational log events (`DB_TIMEOUT`, `SERVICE_UNAVAILABLE`, `ERROR_SPIKE`) bearing the active request `traceId`.
+## Operational Metrics Aggregation
+
+An aggregation layer calculates operational metrics over persisted operational events stored in the `application_logs` table:
+- **Per Service & Time Window**: Calculates total requests/events, error count, error rate (ratio of error events to total events), and latency percentiles/averages (`min`, `max`, `avg`, `p50`, `p95`, `p99`) when available in event metadata.
+- **Configurable Fixed Windows**: Supports time-bucketed aggregation with configurable fixed windows (default: 1 minute, configurable via `metrics.aggregation.default-window-minutes`).
+- **REST Endpoints**:
+  - `GET /api/metrics`: Retrieve time-windowed metrics for a service (or all services) across a time range (`from`, `to`, `service`, `windowMinutes`, `windowSeconds`).
+  - `GET /api/metrics/summary`: Retrieve single-window metric summary across an entire range.
+  - `GET /api/metrics/services`: Retrieve list of all services with stored operational events.
 
 ## Future Phases
 

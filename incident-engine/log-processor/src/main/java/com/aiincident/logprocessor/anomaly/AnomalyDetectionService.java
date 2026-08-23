@@ -23,12 +23,21 @@ public class AnomalyDetectionService {
     private final AnomalyRepository anomalyRepository;
     private final AnomalyDetectionProperties properties;
     private final IncidentService incidentService;
+    private final ZScoreAnomalyDetector zScoreDetector;
 
     public AnomalyDetectionService(
             MetricsAggregationService metricsService,
             AnomalyRepository anomalyRepository,
             AnomalyDetectionProperties properties) {
-        this(metricsService, anomalyRepository, properties, null);
+        this(metricsService, anomalyRepository, properties, null, null);
+    }
+
+    public AnomalyDetectionService(
+            MetricsAggregationService metricsService,
+            AnomalyRepository anomalyRepository,
+            AnomalyDetectionProperties properties,
+            IncidentService incidentService) {
+        this(metricsService, anomalyRepository, properties, incidentService, null);
     }
 
     @Autowired
@@ -36,11 +45,13 @@ public class AnomalyDetectionService {
             MetricsAggregationService metricsService,
             AnomalyRepository anomalyRepository,
             AnomalyDetectionProperties properties,
-            @Autowired(required = false) IncidentService incidentService) {
+            @Autowired(required = false) IncidentService incidentService,
+            @Autowired(required = false) ZScoreAnomalyDetector zScoreDetector) {
         this.metricsService = metricsService;
         this.anomalyRepository = anomalyRepository;
         this.properties = properties;
         this.incidentService = incidentService;
+        this.zScoreDetector = (zScoreDetector != null) ? zScoreDetector : new ZScoreAnomalyDetector(new ZScoreProperties());
     }
 
     /**
@@ -62,6 +73,96 @@ public class AnomalyDetectionService {
             return saved;
         }
         return List.of();
+    }
+
+    /**
+     * Detect and persist anomalies for a specific service using specified strategy,
+     * and automatically convert them into incidents.
+     */
+    @Transactional
+    public List<AnomalyEvent> detectAndSaveAnomaliesForService(
+            String service,
+            String strategy,
+            Instant currentWindowStart,
+            Instant currentWindowEnd,
+            Instant baselineStart,
+            Instant baselineEnd) {
+        List<AnomalyEvent> detected = detectAnomaliesWithStrategy(
+                service,
+                strategy,
+                currentWindowStart,
+                currentWindowEnd,
+                baselineStart,
+                baselineEnd
+        );
+        if (!detected.isEmpty()) {
+            List<AnomalyEvent> saved = anomalyRepository.saveAll(detected);
+            if (incidentService != null) {
+                incidentService.processAnomalies(saved);
+            }
+            return saved;
+        }
+        return List.of();
+    }
+
+    /**
+     * Detect anomalies for a single service using the Z-Score detector.
+     */
+    @Transactional(readOnly = true)
+    public List<AnomalyEvent> detectZScoreAnomaliesForService(
+            String service,
+            Instant currentWindowStart,
+            Instant currentWindowEnd,
+            Instant baselineStart,
+            Instant baselineEnd) {
+        if (service == null || service.isBlank() || zScoreDetector == null) {
+            return List.of();
+        }
+
+        OperationalMetrics currentMetrics = metricsService.getSummary(service, currentWindowStart, currentWindowEnd);
+        if (currentMetrics.totalEvents() == 0) {
+            return List.of();
+        }
+
+        Duration windowDuration = Duration.ofMinutes(1);
+        List<OperationalMetrics> baselineWindows = metricsService.getMetrics(
+                service,
+                baselineStart,
+                baselineEnd,
+                windowDuration
+        );
+
+        return zScoreDetector.detectAnomalies(service, currentMetrics, baselineWindows, Instant.now());
+    }
+
+    /**
+     * Detect anomalies for a service with configurable strategy: "THRESHOLD", "ZSCORE", or "ALL".
+     */
+    @Transactional(readOnly = true)
+    public List<AnomalyEvent> detectAnomaliesWithStrategy(
+            String service,
+            String strategy,
+            Instant currentWindowStart,
+            Instant currentWindowEnd,
+            Instant baselineStart,
+            Instant baselineEnd) {
+        if ("ZSCORE".equalsIgnoreCase(strategy)) {
+            return detectZScoreAnomaliesForService(service, currentWindowStart, currentWindowEnd, baselineStart, baselineEnd);
+        } else if ("ALL".equalsIgnoreCase(strategy) && zScoreDetector != null) {
+            List<AnomalyEvent> thresholdAnomalies = detectAnomaliesForService(service, currentWindowStart, currentWindowEnd, baselineStart, baselineEnd);
+            List<AnomalyEvent> zScoreAnomalies = detectZScoreAnomaliesForService(service, currentWindowStart, currentWindowEnd, baselineStart, baselineEnd);
+            List<AnomalyEvent> combined = new ArrayList<>(thresholdAnomalies);
+            for (AnomalyEvent zEvent : zScoreAnomalies) {
+                boolean duplicate = combined.stream().anyMatch(e ->
+                        e.getService().equals(zEvent.getService()) && e.getMetric().equals(zEvent.getMetric()));
+                if (!duplicate) {
+                    combined.add(zEvent);
+                }
+            }
+            return combined;
+        } else {
+            return detectAnomaliesForService(service, currentWindowStart, currentWindowEnd, baselineStart, baselineEnd);
+        }
     }
 
     /**

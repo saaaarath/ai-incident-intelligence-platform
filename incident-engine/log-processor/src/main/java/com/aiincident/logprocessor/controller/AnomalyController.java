@@ -70,6 +70,7 @@ public class AnomalyController {
     @PostMapping("/detect")
     public ResponseEntity<List<AnomalyEvent>> detectAnomalies(
             @RequestParam(required = false) String service,
+            @RequestParam(required = false) String strategy,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant currentStart,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant currentEnd,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant baselineStart,
@@ -82,14 +83,14 @@ public class AnomalyController {
 
         List<AnomalyEvent> anomalies;
         if (service != null && !service.isBlank()) {
-            List<AnomalyEvent> detected = anomalyDetectionService.detectAnomaliesForService(
+            anomalies = anomalyDetectionService.detectAndSaveAnomaliesForService(
                     service.trim(),
+                    strategy,
                     effectiveCurrentStart,
                     effectiveCurrentEnd,
                     effectiveBaselineStart,
                     effectiveBaselineEnd
             );
-            anomalies = !detected.isEmpty() ? anomalyRepository.saveAll(detected) : List.of();
         } else {
             anomalies = anomalyDetectionService.detectAndSaveAnomalies(
                     effectiveCurrentStart,

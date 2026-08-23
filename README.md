@@ -64,6 +64,17 @@ A statistical and threshold-based anomaly detection engine monitors service heal
   - Automatically avoids false alerts during normal service behavior within expected baseline variability.
 - **Anomaly Event Schema**: Every generated anomaly event records `metric`, `service`, `currentValue`, `baselineMean`, `baselineVariability`, `threshold`, `detectedAt`, `severity`, `windowStart`, `windowEnd`, and `message`.
 - **REST Endpoints**:
+  - `GET /api/anomalies`: Query detected anomalies filtered by `service`, `metric`, `severity`, `from`, `to`.
+  - `POST /api/anomalies/detect`: Trigger anomaly detection over specified time windows (`strategy=THRESHOLD`, `strategy=ZSCORE`, or `strategy=ALL`) and persist detected anomaly events.
+
+## Z-Score Anomaly Detection
+
+A dedicated statistical detector evaluates metric anomalies using standard Z-score analysis:
+- **Formula**: $z = \frac{x - \mu}{\sigma}$ where $\mu$ is historical baseline mean and $\sigma$ is baseline standard deviation.
+- **Zero Standard Deviation Safety**: Safely handles zero standard deviation (e.g. constant 0% error rate or constant latency) without division-by-zero, evaluating meaningful deviations above the noise floor.
+- **Configurable Thresholds**: Configurable via `anomaly.zscore.threshold` (default: 3.0), `anomaly.zscore.min-samples` (default: 3), and `anomaly.zscore.zero-sigma-min-diff` (default: 0.05).
+- **Seamless Incident Integration**: Z-Score anomalies produce the standard `AnomalyEvent` format and automatically feed into the incident creation and correlation engine.
+
 ## Incident Management
 
 An incident correlation and management engine converts detected anomalies into tracked incidents:

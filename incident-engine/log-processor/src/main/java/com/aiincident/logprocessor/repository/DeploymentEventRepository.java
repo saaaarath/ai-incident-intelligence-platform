@@ -20,4 +20,6 @@ public interface DeploymentEventRepository extends JpaRepository<ProcessedDeploy
     List<ProcessedDeploymentEvent> findByEventType(String eventType);
 
     List<ProcessedDeploymentEvent> findByTraceId(String traceId);
+
+    List<ProcessedDeploymentEvent> findByTimestampBetweenOrderByTimestampAsc(java.time.Instant start, java.time.Instant end);
 }

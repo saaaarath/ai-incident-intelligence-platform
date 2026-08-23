@@ -150,6 +150,19 @@ A multi-factor scoring engine distinguishes originating primary failures from do
   - `GET /incidents/{id}/primary-failure` (or `GET /api/incidents/{id}/primary-failure`): Analyze an incident and return the primary failure candidate, confidence, ranked scores, and symptom list.
   - `POST /api/incidents/analyze-primary-failure`: On-demand primary failure analysis for an arbitrary collection of evidence events.
 
+## Incident Timeline
+
+A unified, chronologically sorted incident timeline synthesizes 5 operational event sources across the incident lifetime:
+- **Unified Event Sources**:
+  1. `DEPLOYMENT`: Version changes and deployment lifecycle events leading up to or during the incident.
+  2. `ANOMALY`: Statistical z-score and threshold deviation breaches.
+  3. `SERVICE_FAILURE`: Correlated failure evidence chains.
+  4. `METRIC`: Time-bucketed error rate and latency spikes.
+  5. `LOG`: Structured operational log events across affected services (deduplicated against failure evidence).
+- **Chronological Sorting & Deduplication**: Events are strictly sorted by timestamp ascending, formatted with unified metadata, summary, severity, and event type.
+- **REST Endpoints**:
+  - `GET /incidents/{id}/timeline` (or `GET /api/incidents/{id}/timeline`): Retrieve complete chronological timeline for an incident with optional `bufferMinutes` and `types` filtering.
+
 ## Future Phases
 
 1. Extend the service domain APIs and PostgreSQL persistence.

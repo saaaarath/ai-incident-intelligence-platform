@@ -53,7 +53,19 @@ An aggregation layer calculates operational metrics over persisted operational e
 - **REST Endpoints**:
   - `GET /api/metrics`: Retrieve time-windowed metrics for a service (or all services) across a time range (`from`, `to`, `service`, `windowMinutes`, `windowSeconds`).
   - `GET /api/metrics/summary`: Retrieve single-window metric summary across an entire range.
-  - `GET /api/metrics/services`: Retrieve list of all services with stored operational events.
+## Baseline-Based Anomaly Detection
+
+A statistical and threshold-based anomaly detection engine monitors service health against historical baselines:
+- **Baseline Metrics**: Computes baseline mean ($\mu$) and baseline variability ($\sigma$, standard deviation) over historical time windows per service and metric (`errorRate`, `latencyAvg`).
+- **Deviation & Threshold Detection**:
+  - Compares the current time window against the historical baseline.
+  - Triggers an anomaly event when current metrics breach statistical sigma thresholds (e.g. $\ge 3\sigma$) or configurable absolute thresholds (e.g. error rate $\ge 5\%$, latency spikes).
+  - Assigns severity levels (`LOW`, `MEDIUM`, `HIGH`, `CRITICAL`) based on the magnitude of the deviation.
+  - Automatically avoids false alerts during normal service behavior within expected baseline variability.
+- **Anomaly Event Schema**: Every generated anomaly event records `metric`, `service`, `currentValue`, `baselineMean`, `baselineVariability`, `threshold`, `detectedAt`, `severity`, `windowStart`, `windowEnd`, and `message`.
+- **REST Endpoints**:
+  - `GET /api/anomalies`: Query detected anomalies filtered by `service`, `metric`, `severity`, `from`, `to`.
+  - `POST /api/anomalies/detect`: Trigger anomaly detection over specified time windows and persist detected anomaly events.
 
 ## Future Phases
 

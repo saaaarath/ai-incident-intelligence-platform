@@ -2,6 +2,8 @@ package com.aiincident.logprocessor.incident;
 
 import com.aiincident.logprocessor.anomaly.AnomalySeverity;
 import com.aiincident.logprocessor.entity.ProcessedLogEvent;
+import com.aiincident.logprocessor.fingerprint.ErrorFingerprint;
+import com.aiincident.logprocessor.fingerprint.ErrorFingerprintGenerator;
 import com.aiincident.logprocessor.repository.LogEventRepository;
 import java.time.Duration;
 import java.time.Instant;
@@ -13,13 +15,14 @@ import java.util.Optional;
 import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Deterministic Incident Correlation Engine.
  * Correlates cascading and multi-service operational events into unified incidents
- * using time proximity, service topology, event types, and active incident state without AI.
+ * using time proximity, service topology, event types, error fingerprinting, and active incident state without AI.
  */
 @Service
 public class IncidentCorrelationService {
@@ -37,6 +40,7 @@ public class IncidentCorrelationService {
     private final IncidentProperties properties;
     private final ServiceDependencyGraph dependencyGraph;
     private final EventTypeClassifier eventTypeClassifier;
+    private final ErrorFingerprintGenerator fingerprintGenerator;
 
     public IncidentCorrelationService(
             IncidentRepository incidentRepository,
@@ -45,12 +49,25 @@ public class IncidentCorrelationService {
             IncidentProperties properties,
             ServiceDependencyGraph dependencyGraph,
             EventTypeClassifier eventTypeClassifier) {
+        this(incidentRepository, evidenceRepository, logEventRepository, properties, dependencyGraph, eventTypeClassifier, new ErrorFingerprintGenerator());
+    }
+
+    @Autowired
+    public IncidentCorrelationService(
+            IncidentRepository incidentRepository,
+            IncidentEvidenceRepository evidenceRepository,
+            LogEventRepository logEventRepository,
+            IncidentProperties properties,
+            ServiceDependencyGraph dependencyGraph,
+            EventTypeClassifier eventTypeClassifier,
+            @Autowired(required = false) ErrorFingerprintGenerator fingerprintGenerator) {
         this.incidentRepository = incidentRepository;
         this.evidenceRepository = evidenceRepository;
         this.logEventRepository = logEventRepository;
         this.properties = properties;
         this.dependencyGraph = dependencyGraph;
         this.eventTypeClassifier = eventTypeClassifier;
+        this.fingerprintGenerator = fingerprintGenerator != null ? fingerprintGenerator : new ErrorFingerprintGenerator();
     }
 
     /**
@@ -72,14 +89,17 @@ public class IncidentCorrelationService {
         Instant eventTime = event.getTimestamp() != null ? event.getTimestamp() : Instant.now();
         AnomalySeverity severity = eventTypeClassifier.classifySeverity(event.getLevel(), event.getEventType(), event.getMessage());
 
+        // Generate error fingerprint for the event
+        ErrorFingerprint fingerprint = fingerprintGenerator.generateFingerprint(service, event.getEventType(), event.getMessage());
+
         // 1. Search for matching active incident
-        Optional<Incident> matchingIncidentOpt = findMatchingActiveIncident(service, eventTime, event.getEventType(), event.getTraceId());
+        Optional<Incident> matchingIncidentOpt = findMatchingActiveIncident(service, eventTime, event.getEventType(), event.getTraceId(), fingerprint.fingerprintHash());
 
         Incident incident;
         if (matchingIncidentOpt.isPresent()) {
             incident = matchingIncidentOpt.get();
-            log.info("Correlating event [{}:{}:{}] to active incident #{} (primary={}, root={})",
-                    service, event.getEventType(), eventTime, incident.getId(), incident.getPrimaryService(), incident.getRootService());
+            log.info("Correlating event [{}:{}:{}] (fp={}) to active incident #{} (primary={}, root={})",
+                    service, event.getEventType(), eventTime, fingerprint.fingerprintHash(), incident.getId(), incident.getPrimaryService(), incident.getRootService());
 
             // Upgrade severity if this event is more severe
             if (isHigherSeverity(severity, incident.getSeverity())) {
@@ -94,6 +114,11 @@ public class IncidentCorrelationService {
             // Update time tracking
             if (eventTime.isAfter(incident.getLastEventAt())) {
                 incident.setLastEventAt(eventTime);
+            }
+
+            // If incident didn't have fingerprint set, set it
+            if (incident.getFingerprint() == null) {
+                incident.setFingerprint(fingerprint.fingerprintHash());
             }
 
             // Update description with cascading info if new service affected
@@ -122,13 +147,14 @@ public class IncidentCorrelationService {
             incident.setLastEventAt(eventTime);
             incident.setRootService(service);
             incident.addAffectedService(service);
+            incident.setFingerprint(fingerprint.fingerprintHash());
 
             incident = incidentRepository.save(incident);
-            log.warn("Created new incident #{} [title='{}', severity={}, primaryService='{}'] for event {}",
-                    incident.getId(), incident.getTitle(), incident.getSeverity(), incident.getPrimaryService(), event.getEventType());
+            log.warn("Created new incident #{} [title='{}', severity={}, primaryService='{}', fp={}] for event {}",
+                    incident.getId(), incident.getTitle(), incident.getSeverity(), incident.getPrimaryService(), fingerprint.fingerprintHash(), event.getEventType());
         }
 
-        // 3. Persist correlated evidence
+        // 3. Persist correlated evidence with fingerprint
         IncidentEvidence evidence = new IncidentEvidence(
                 incident.getId(),
                 event.getEventId(),
@@ -137,6 +163,8 @@ public class IncidentCorrelationService {
                 event.getEventType(),
                 severity,
                 event.getMessage(),
+                fingerprint.normalizedMessage(),
+                fingerprint.fingerprintHash(),
                 event.getTraceId(),
                 event.getMetadata()
         );
@@ -188,7 +216,7 @@ public class IncidentCorrelationService {
     /**
      * Find an active incident matching time proximity, service relationship, and event compatibility.
      */
-    private Optional<Incident> findMatchingActiveIncident(String service, Instant eventTime, String eventType, String traceId) {
+    private Optional<Incident> findMatchingActiveIncident(String service, Instant eventTime, String eventType, String traceId, String fingerprintHash) {
         List<Incident> activeIncidents = incidentRepository.findByStatusIn(ACTIVE_STATUSES);
         if (activeIncidents.isEmpty()) {
             return Optional.empty();
@@ -199,8 +227,6 @@ public class IncidentCorrelationService {
 
         for (Incident active : activeIncidents) {
             // 1. Check Time Proximity:
-            // Event must be within correlationWindowSeconds of last event or startedAt,
-            // and within maxIncidentWindowMinutes from incident startedAt
             Instant incidentStart = active.getStartedAt();
             Instant incidentLast = active.getLastEventAt();
 
@@ -224,7 +250,12 @@ public class IncidentCorrelationService {
                 }
             }
 
-            // 3. Check Service Proximity:
+            // 3. Check Fingerprint match within active window
+            if (fingerprintHash != null && fingerprintHash.equals(active.getFingerprint())) {
+                return Optional.of(active);
+            }
+
+            // 4. Check Service Proximity:
             // a) Same primary service
             if (active.getPrimaryService().equalsIgnoreCase(service)) {
                 return Optional.of(active);

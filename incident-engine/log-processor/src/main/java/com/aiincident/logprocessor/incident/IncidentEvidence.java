@@ -21,7 +21,8 @@ import java.util.UUID;
                 @Index(name = "idx_evidence_event_id", columnList = "event_id"),
                 @Index(name = "idx_evidence_timestamp", columnList = "timestamp"),
                 @Index(name = "idx_evidence_service", columnList = "service"),
-                @Index(name = "idx_evidence_trace_id", columnList = "trace_id")
+                @Index(name = "idx_evidence_trace_id", columnList = "trace_id"),
+                @Index(name = "idx_evidence_fingerprint", columnList = "fingerprint")
         }
 )
 public class IncidentEvidence {
@@ -52,6 +53,12 @@ public class IncidentEvidence {
     @Column(name = "message", columnDefinition = "TEXT")
     private String message;
 
+    @Column(name = "normalized_message", columnDefinition = "TEXT")
+    private String normalizedMessage;
+
+    @Column(name = "fingerprint")
+    private String fingerprint;
+
     @Column(name = "trace_id")
     private String traceId;
 
@@ -74,6 +81,21 @@ public class IncidentEvidence {
             String message,
             String traceId,
             String metadataJson) {
+        this(incidentId, eventId, timestamp, service, eventType, severity, message, null, null, traceId, metadataJson);
+    }
+
+    public IncidentEvidence(
+            Long incidentId,
+            String eventId,
+            Instant timestamp,
+            String service,
+            String eventType,
+            AnomalySeverity severity,
+            String message,
+            String normalizedMessage,
+            String fingerprint,
+            String traceId,
+            String metadataJson) {
         this.incidentId = incidentId;
         this.eventId = eventId != null ? eventId : UUID.randomUUID().toString();
         this.timestamp = timestamp != null ? timestamp : Instant.now();
@@ -81,6 +103,8 @@ public class IncidentEvidence {
         this.eventType = eventType;
         this.severity = severity != null ? severity : AnomalySeverity.MEDIUM;
         this.message = message;
+        this.normalizedMessage = normalizedMessage;
+        this.fingerprint = fingerprint;
         this.traceId = traceId;
         this.metadataJson = metadataJson;
         this.correlatedAt = Instant.now();
@@ -144,6 +168,22 @@ public class IncidentEvidence {
 
     public void setMessage(String message) {
         this.message = message;
+    }
+
+    public String getNormalizedMessage() {
+        return normalizedMessage;
+    }
+
+    public void setNormalizedMessage(String normalizedMessage) {
+        this.normalizedMessage = normalizedMessage;
+    }
+
+    public String getFingerprint() {
+        return fingerprint;
+    }
+
+    public void setFingerprint(String fingerprint) {
+        this.fingerprint = fingerprint;
     }
 
     public String getTraceId() {

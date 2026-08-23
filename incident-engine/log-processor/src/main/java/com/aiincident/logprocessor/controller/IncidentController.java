@@ -55,10 +55,11 @@ public class IncidentController {
             @RequestParam(required = false) IncidentStatus status,
             @RequestParam(required = false) AnomalySeverity severity,
             @RequestParam(required = false) String service,
+            @RequestParam(required = false) String fingerprint,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant to) {
 
-        List<Incident> results = incidentService.findIncidents(status, severity, service, from, to);
+        List<Incident> results = incidentService.findIncidents(status, severity, service, fingerprint, from, to);
         return ResponseEntity.ok(results);
     }
 

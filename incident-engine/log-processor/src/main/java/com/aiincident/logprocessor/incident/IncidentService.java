@@ -260,6 +260,20 @@ public class IncidentService {
             String service,
             Instant from,
             Instant to) {
+        return findIncidents(status, severity, service, null, from, to);
+    }
+
+    /**
+     * Query incidents with multi-criteria filtering including fingerprint.
+     */
+    @Transactional(readOnly = true)
+    public List<Incident> findIncidents(
+            IncidentStatus status,
+            AnomalySeverity severity,
+            String service,
+            String fingerprint,
+            Instant from,
+            Instant to) {
 
         List<Incident> incidents = incidentRepository.findAll();
 
@@ -269,6 +283,8 @@ public class IncidentService {
                 .filter(i -> service == null || service.isBlank() ||
                         (i.getPrimaryService() != null && i.getPrimaryService().equalsIgnoreCase(service.trim())) ||
                         (i.getAffectedServices() != null && i.getAffectedServices().stream().anyMatch(s -> s.equalsIgnoreCase(service.trim()))))
+                .filter(i -> fingerprint == null || fingerprint.isBlank() ||
+                        (i.getFingerprint() != null && i.getFingerprint().equalsIgnoreCase(fingerprint.trim())))
                 .filter(i -> {
                     if (from == null && to == null) return true;
                     Instant time = i.getDetectedAt() != null ? i.getDetectedAt() : i.getStartedAt();
@@ -279,6 +295,16 @@ public class IncidentService {
                 })
                 .peek(this::loadEvidence)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<Incident> findByFingerprint(String fingerprint) {
+        if (fingerprint == null || fingerprint.isBlank()) {
+            return List.of();
+        }
+        List<Incident> list = incidentRepository.findByFingerprint(fingerprint.trim());
+        list.forEach(this::loadEvidence);
+        return list;
     }
 
     @Transactional(readOnly = true)

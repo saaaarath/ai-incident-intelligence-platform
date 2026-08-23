@@ -30,7 +30,8 @@ import java.util.UUID;
                 @Index(name = "idx_incidents_service", columnList = "primary_service"),
                 @Index(name = "idx_incidents_severity", columnList = "severity"),
                 @Index(name = "idx_incidents_started_at", columnList = "started_at"),
-                @Index(name = "idx_incidents_last_event_at", columnList = "last_event_at")
+                @Index(name = "idx_incidents_last_event_at", columnList = "last_event_at"),
+                @Index(name = "idx_incidents_fingerprint", columnList = "fingerprint")
         }
 )
 public class Incident {
@@ -41,6 +42,9 @@ public class Incident {
 
     @Column(name = "incident_id", nullable = false, unique = true)
     private String incidentId;
+
+    @Column(name = "fingerprint")
+    private String fingerprint;
 
     @Column(name = "title", nullable = false)
     private String title;
@@ -124,6 +128,14 @@ public class Incident {
 
     public void setIncidentId(String incidentId) {
         this.incidentId = incidentId;
+    }
+
+    public String getFingerprint() {
+        return fingerprint;
+    }
+
+    public void setFingerprint(String fingerprint) {
+        this.fingerprint = fingerprint;
     }
 
     public String getTitle() {

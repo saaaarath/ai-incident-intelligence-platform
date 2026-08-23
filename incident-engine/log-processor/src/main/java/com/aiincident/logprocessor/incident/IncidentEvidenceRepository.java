@@ -18,5 +18,7 @@ public interface IncidentEvidenceRepository extends JpaRepository<IncidentEviden
 
     List<IncidentEvidence> findByService(String service);
 
+    List<IncidentEvidence> findByFingerprint(String fingerprint);
+
     void deleteByIncidentId(Long incidentId);
 }

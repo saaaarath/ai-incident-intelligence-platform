@@ -34,4 +34,8 @@ public interface IncidentRepository extends JpaRepository<Incident, Long> {
     List<Incident> findByStatusAndSeverity(IncidentStatus status, com.aiincident.logprocessor.anomaly.AnomalySeverity severity);
 
     List<Incident> findByDetectedAtBetween(Instant from, Instant to);
+
+    List<Incident> findByFingerprint(String fingerprint);
+
+    List<Incident> findByFingerprintAndStatusIn(String fingerprint, Collection<IncidentStatus> statuses);
 }

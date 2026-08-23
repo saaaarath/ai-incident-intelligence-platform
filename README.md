@@ -104,6 +104,20 @@ A deterministic, rule-based correlation engine groups cascading operational fail
   - `GET /incidents/{id}/evidence`: Retrieve the complete chronological evidence chain for an incident.
   - `POST /api/incidents/correlate`: Trigger correlation across stored events for a given time window.
 
+## Error Fingerprinting
+
+A normalization and fingerprinting engine groups equivalent operational failures across dynamic IDs and timestamps:
+- **Normalization Strategy**:
+  - Replaces variable tokens (UUIDs, ISO/RFC timestamps, times, dates, IP addresses, ports, hex hashes, named IDs like `order_id=123`, and numeric latencies/durations) with canonical placeholders (`<UUID>`, `<TIMESTAMP>`, `<TIME>`, `<DATE>`, `<IP>`, `<HEX>`, `<ID>`, `<NUM>`).
+  - Produces a canonical lowercase template pattern (`service:eventType:normalizedMessage`).
+- **Deterministic Fingerprint**: Generates a standard SHA-256 hash identifying the underlying error pattern, ensuring errors with varying order IDs, timestamps, or execution times map to the identical fingerprint.
+- **Incident & Evidence Tracking**: Both `incidents` and `incident_evidence` record the associated `fingerprint`.
+- **REST Endpoints**:
+  - `POST /api/fingerprints/generate` (or `POST /api/fingerprints/normalize`): Generate normalized error pattern and fingerprint hash for given parameters.
+  - `GET /api/fingerprints`: Query aggregated fingerprint summaries and occurrence counts over a time window.
+  - `GET /api/fingerprints/groups`: Retrieve log events grouped by error fingerprint.
+  - `GET /api/incidents?fingerprint=...`: Filter tracked incidents by error fingerprint hash.
+
 ## Future Phases
 
 1. Extend the service domain APIs and PostgreSQL persistence.

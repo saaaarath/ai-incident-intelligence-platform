@@ -24,6 +24,26 @@ public class IncidentProperties {
      */
     private int activeWindowMinutes = 15;
 
+    /**
+     * Time window in seconds within which cascading/related events are correlated into a single incident.
+     */
+    private int correlationWindowSeconds = 60;
+
+    /**
+     * Maximum duration in minutes an incident can remain open for correlating incoming events.
+     */
+    private int maxIncidentWindowMinutes = 30;
+
+    /**
+     * Whether to automatically correlate incoming error log events into incidents.
+     */
+    private boolean autoCorrelateEvents = true;
+
+    /**
+     * Whether cross-service dependency correlation is enabled during cascading failures.
+     */
+    private boolean crossServiceCorrelationEnabled = true;
+
     public AnomalySeverity getMinIncidentSeverity() {
         return minIncidentSeverity;
     }
@@ -46,5 +66,37 @@ public class IncidentProperties {
 
     public void setActiveWindowMinutes(int activeWindowMinutes) {
         this.activeWindowMinutes = activeWindowMinutes;
+    }
+
+    public int getCorrelationWindowSeconds() {
+        return correlationWindowSeconds;
+    }
+
+    public void setCorrelationWindowSeconds(int correlationWindowSeconds) {
+        this.correlationWindowSeconds = correlationWindowSeconds;
+    }
+
+    public int getMaxIncidentWindowMinutes() {
+        return maxIncidentWindowMinutes;
+    }
+
+    public void setMaxIncidentWindowMinutes(int maxIncidentWindowMinutes) {
+        this.maxIncidentWindowMinutes = maxIncidentWindowMinutes;
+    }
+
+    public boolean isAutoCorrelateEvents() {
+        return autoCorrelateEvents;
+    }
+
+    public void setAutoCorrelateEvents(boolean autoCorrelateEvents) {
+        this.autoCorrelateEvents = autoCorrelateEvents;
+    }
+
+    public boolean isCrossServiceCorrelationEnabled() {
+        return crossServiceCorrelationEnabled;
+    }
+
+    public void setCrossServiceCorrelationEnabled(boolean crossServiceCorrelationEnabled) {
+        this.crossServiceCorrelationEnabled = crossServiceCorrelationEnabled;
     }
 }

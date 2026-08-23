@@ -23,6 +23,8 @@ public interface LogEventRepository extends JpaRepository<ProcessedLogEvent, Lon
 
     List<ProcessedLogEvent> findByTimestampBetween(Instant start, Instant end);
 
+    List<ProcessedLogEvent> findByTimestampBetweenOrderByTimestampAsc(Instant start, Instant end);
+
     List<ProcessedLogEvent> findByServiceAndTimestampBetween(String service, Instant start, Instant end);
 
     List<ProcessedLogEvent> findByTimestampGreaterThanEqual(Instant start);

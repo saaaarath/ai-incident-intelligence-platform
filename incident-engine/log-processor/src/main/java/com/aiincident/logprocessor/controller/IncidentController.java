@@ -2,11 +2,14 @@ package com.aiincident.logprocessor.controller;
 
 import com.aiincident.logprocessor.anomaly.AnomalySeverity;
 import com.aiincident.logprocessor.incident.Incident;
+import com.aiincident.logprocessor.incident.IncidentCorrelationService;
+import com.aiincident.logprocessor.incident.IncidentEvidence;
 import com.aiincident.logprocessor.incident.IncidentRepository;
 import com.aiincident.logprocessor.incident.IncidentService;
 import com.aiincident.logprocessor.incident.IncidentStatus;
 import java.time.Instant;
 import java.util.List;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -25,10 +28,22 @@ public class IncidentController {
 
     private final IncidentService incidentService;
     private final IncidentRepository incidentRepository;
+    private final IncidentCorrelationService correlationService;
 
-    public IncidentController(IncidentService incidentService, IncidentRepository incidentRepository) {
+    public IncidentController(
+            IncidentService incidentService,
+            IncidentRepository incidentRepository) {
+        this(incidentService, incidentRepository, null);
+    }
+
+    @Autowired
+    public IncidentController(
+            IncidentService incidentService,
+            IncidentRepository incidentRepository,
+            @Autowired(required = false) IncidentCorrelationService correlationService) {
         this.incidentService = incidentService;
         this.incidentRepository = incidentRepository;
+        this.correlationService = correlationService;
     }
 
     /**
@@ -56,6 +71,34 @@ public class IncidentController {
         return incidentService.findById(id)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    /**
+     * Get correlated evidence for a specific incident.
+     * Example: GET /incidents/1/evidence
+     */
+    @GetMapping("/{id}/evidence")
+    public ResponseEntity<List<IncidentEvidence>> getIncidentEvidence(@PathVariable Long id) {
+        if (incidentService.findById(id).isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        List<IncidentEvidence> evidence = incidentService.getEvidenceByIncidentId(id);
+        return ResponseEntity.ok(evidence);
+    }
+
+    /**
+     * Trigger incident correlation over a time window.
+     * Example: POST /api/incidents/correlate?from=2026-08-23T12:00:00Z&to=2026-08-23T12:15:00Z
+     */
+    @PostMapping("/correlate")
+    public ResponseEntity<List<Incident>> correlateEvents(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant to) {
+        if (correlationService == null) {
+            return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
+        }
+        List<Incident> correlated = correlationService.correlateTimeRange(from, to);
+        return ResponseEntity.ok(correlated);
     }
 
     /**

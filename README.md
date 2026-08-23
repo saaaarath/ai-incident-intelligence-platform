@@ -91,6 +91,19 @@ An incident correlation and management engine converts detected anomalies into t
   - `PATCH /incidents/{id}/status` (or `PATCH /api/incidents/{id}/status`): Update lifecycle status directly.
   - `POST /incidents`: Manually register an incident.
 
+## Incident Time-Window & Cascading Failure Correlation
+
+A deterministic, rule-based correlation engine groups cascading operational failure events across services into unified incidents:
+- **Multi-Dimensional Correlation**:
+  - **Time Proximity**: Groups events occurring within a configurable sliding correlation time window (default: 60 seconds via `incident.correlation-window-seconds`).
+  - **Service Topology**: Recognizes caller-callee and dependency relationships via `ServiceDependencyGraph` (`order-service` -> `payment-service` / `inventory-service` -> `database`), grouping downstream cascade failures into the root originating incident.
+  - **Event Type Taxonomy**: Evaluates failure indicators (`DB_TIMEOUT`, `POOL_EXHAUSTED`, `PAYMENT_FAILED`, `ORDER_TIMEOUT`, `SERVICE_UNAVAILABLE`) and prioritizes root causes.
+  - **Active Incident State**: Correlates new evidence into `OPEN` or `INVESTIGATING` incidents, tracking all `affectedServices`, updating `lastEventAt`, and dynamically upgrading severity when higher-severity events occur.
+- **Evidence Chain**: Correlated events are persisted in `incident_evidence` table linked to the parent incident.
+- **REST Endpoints**:
+  - `GET /incidents/{id}/evidence`: Retrieve the complete chronological evidence chain for an incident.
+  - `POST /api/incidents/correlate`: Trigger correlation across stored events for a given time window.
+
 ## Future Phases
 
 1. Extend the service domain APIs and PostgreSQL persistence.

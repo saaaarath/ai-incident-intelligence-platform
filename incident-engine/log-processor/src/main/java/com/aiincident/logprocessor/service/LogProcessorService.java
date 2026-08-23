@@ -2,6 +2,8 @@ package com.aiincident.logprocessor.service;
 
 import com.aiincident.logging.LogEvent;
 import com.aiincident.logprocessor.entity.ProcessedLogEvent;
+import com.aiincident.logprocessor.incident.IncidentCorrelationService;
+import com.aiincident.logprocessor.incident.IncidentProperties;
 import com.aiincident.logprocessor.repository.LogEventRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -10,6 +12,7 @@ import java.util.List;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,10 +24,23 @@ public class LogProcessorService {
 
     private final LogEventRepository logEventRepository;
     private final ObjectMapper objectMapper;
+    private final IncidentCorrelationService correlationService;
+    private final IncidentProperties incidentProperties;
 
     public LogProcessorService(LogEventRepository logEventRepository, ObjectMapper objectMapper) {
+        this(logEventRepository, objectMapper, null, null);
+    }
+
+    @Autowired
+    public LogProcessorService(
+            LogEventRepository logEventRepository,
+            ObjectMapper objectMapper,
+            @Autowired(required = false) IncidentCorrelationService correlationService,
+            @Autowired(required = false) IncidentProperties incidentProperties) {
         this.logEventRepository = logEventRepository;
         this.objectMapper = objectMapper;
+        this.correlationService = correlationService;
+        this.incidentProperties = incidentProperties;
     }
 
     /**
@@ -95,15 +111,26 @@ public class LogProcessorService {
         );
 
         // 2. Persist with database-level unique constraint protection against race conditions
+        ProcessedLogEvent saved;
         try {
-            ProcessedLogEvent saved = logEventRepository.saveAndFlush(entity);
+            saved = logEventRepository.saveAndFlush(entity);
             log.info("Persisted log event [id={}, eventId={}, service={}, eventType={}, traceId={}]",
                     saved.getId(), saved.getEventId(), saved.getService(), saved.getEventType(), saved.getTraceId());
-            return Optional.of(saved);
         } catch (DataIntegrityViolationException e) {
             log.info("Concurrent duplicate event delivery caught by unique constraint: eventId='{}'", eventId);
             return logEventRepository.findByEventId(eventId);
         }
+
+        // 3. Auto-correlate into incident if enabled and event is a failure event
+        if (correlationService != null && (incidentProperties == null || incidentProperties.isAutoCorrelateEvents())) {
+            try {
+                correlationService.correlateLogEvent(saved);
+            } catch (Exception e) {
+                log.error("Error correlating log event id={}: {}", saved.getId(), e.getMessage(), e);
+            }
+        }
+
+        return Optional.of(saved);
     }
 
     public boolean isValid(LogEvent event) {

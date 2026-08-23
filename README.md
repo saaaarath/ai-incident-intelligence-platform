@@ -83,10 +83,13 @@ An incident correlation and management engine converts detected anomalies into t
 - **Duplicate Incident Prevention**: Consecutive or related anomalies for the same service within an active failure window correlate to the active incident instead of generating duplicate records. If incoming anomalies exhibit higher severity, the active incident's severity is dynamically upgraded.
 - **Lifecycle Transitions**: Full state machine (`OPEN` -> `INVESTIGATING` -> `RESOLVED` -> `CLOSED`). Moving to `RESOLVED` or `CLOSED` automatically records `resolvedAt` timestamp.
 - **REST Endpoints**:
-  - `GET /api/incidents`: Query incidents with optional filtering by `status`, `service`, `from`, `to`.
-  - `GET /api/incidents/{id}`: Retrieve a specific incident.
-  - `PATCH /api/incidents/{id}/status`: Update lifecycle status (`?status=INVESTIGATING`, `?status=RESOLVED`).
-  - `POST /api/incidents`: Manually register an incident.
+  - `GET /incidents` (or `GET /api/incidents`): Query incidents with filtering by `status`, `severity`, `service`, and time range (`from`, `to`).
+  - `GET /incidents/{id}`: Retrieve a specific incident by ID (returns 404 if not found).
+  - `POST /incidents/{id}/acknowledge`: Transition incident from `OPEN` to `INVESTIGATING`.
+  - `POST /incidents/{id}/resolve`: Transition incident to `RESOLVED` and record resolution timestamp.
+  - `POST /incidents/{id}/close`: Transition incident to `CLOSED`.
+  - `PATCH /incidents/{id}/status` (or `PATCH /api/incidents/{id}/status`): Update lifecycle status directly.
+  - `POST /incidents`: Manually register an incident.
 
 ## Future Phases
 

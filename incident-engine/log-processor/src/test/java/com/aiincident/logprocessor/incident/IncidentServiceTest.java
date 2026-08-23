@@ -195,4 +195,79 @@ class IncidentServiceTest {
         assertThat(reopened.getStatus()).isEqualTo(IncidentStatus.OPEN);
         assertThat(reopened.getResolvedAt()).isNull();
     }
+
+    @Test
+    @DisplayName("Should acknowledge OPEN incident to INVESTIGATING and fail if not in OPEN status")
+    void testAcknowledgeIncident() {
+        Incident incident = new Incident("Test", AnomalySeverity.HIGH, IncidentStatus.OPEN, "order-service", Instant.now(), Instant.now(), "d", "m");
+        when(incidentRepository.findById(1L)).thenReturn(Optional.of(incident));
+        when(incidentRepository.save(any(Incident.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Incident acknowledged = incidentService.acknowledgeIncident(1L);
+        assertThat(acknowledged.getStatus()).isEqualTo(IncidentStatus.INVESTIGATING);
+
+        // Attempting to acknowledge again (already INVESTIGATING) should throw IllegalStateException
+        assertThatThrownBy(() -> incidentService.acknowledgeIncident(1L))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Cannot acknowledge incident in status: INVESTIGATING");
+    }
+
+    @Test
+    @DisplayName("Should resolve incident and set resolvedAt timestamp, and fail if already CLOSED")
+    void testResolveIncident() {
+        Incident incident = new Incident("Test", AnomalySeverity.HIGH, IncidentStatus.INVESTIGATING, "order-service", Instant.now(), Instant.now(), "d", "m");
+        when(incidentRepository.findById(1L)).thenReturn(Optional.of(incident));
+        when(incidentRepository.save(any(Incident.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Incident resolved = incidentService.resolveIncident(1L);
+        assertThat(resolved.getStatus()).isEqualTo(IncidentStatus.RESOLVED);
+        assertThat(resolved.getResolvedAt()).isNotNull();
+
+        incident.setStatus(IncidentStatus.CLOSED);
+        assertThatThrownBy(() -> incidentService.resolveIncident(1L))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Cannot resolve an already closed incident");
+    }
+
+    @Test
+    @DisplayName("Should close incident and populate resolvedAt timestamp")
+    void testCloseIncident() {
+        Incident incident = new Incident("Test", AnomalySeverity.HIGH, IncidentStatus.OPEN, "order-service", Instant.now(), Instant.now(), "d", "m");
+        when(incidentRepository.findById(1L)).thenReturn(Optional.of(incident));
+        when(incidentRepository.save(any(Incident.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Incident closed = incidentService.closeIncident(1L);
+        assertThat(closed.getStatus()).isEqualTo(IncidentStatus.CLOSED);
+        assertThat(closed.getResolvedAt()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("Should filter incidents across status, severity, service, and time range")
+    void testFindIncidentsFiltering() {
+        Instant t1 = Instant.parse("2026-08-23T12:00:00Z");
+        Instant t2 = Instant.parse("2026-08-23T12:30:00Z");
+        Instant t3 = Instant.parse("2026-08-23T13:00:00Z");
+
+        Incident inc1 = new Incident("Inc 1", AnomalySeverity.CRITICAL, IncidentStatus.OPEN, "order-service", t1, t1, "d", "errorRate");
+        Incident inc2 = new Incident("Inc 2", AnomalySeverity.HIGH, IncidentStatus.INVESTIGATING, "payment-service", t2, t2, "d", "latencyAvg");
+        Incident inc3 = new Incident("Inc 3", AnomalySeverity.LOW, IncidentStatus.RESOLVED, "order-service", t3, t3, "d", "errorRate");
+
+        when(incidentRepository.findAll()).thenReturn(List.of(inc1, inc2, inc3));
+
+        // Filter by status
+        List<Incident> openOnly = incidentService.findIncidents(IncidentStatus.OPEN, null, null, null, null);
+        assertThat(openOnly).containsExactly(inc1);
+
+        // Filter by severity
+        List<Incident> highOnly = incidentService.findIncidents(null, AnomalySeverity.HIGH, null, null, null);
+        assertThat(highOnly).containsExactly(inc2);
+
+        // Filter by service
+        List<Incident> orderOnly = incidentService.findIncidents(null, null, "order-service", null, null);
+        assertThat(orderOnly).containsExactly(inc1, inc3);
+
+        // Filter by time range
+        List<Incident> timeFiltered = incidentService.findIncidents(null, null, null, t1.plusSeconds(60), t3.minusSeconds(60));
+        assertThat(timeFiltered).containsExactly(inc2);
+    }
 }

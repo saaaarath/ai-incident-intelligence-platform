@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/incidents")
+@RequestMapping({"/incidents", "/api/incidents"})
 public class IncidentController {
 
     private final IncidentService incidentService;
@@ -32,32 +32,24 @@ public class IncidentController {
     }
 
     /**
-     * Query incidents with optional filters.
-     * Example: GET /api/incidents?status=OPEN&service=order-service
+     * Query incidents with optional filters: status, severity, service, and time range (from, to).
+     * Example: GET /incidents?status=OPEN&severity=CRITICAL&service=order-service
      */
     @GetMapping
     public ResponseEntity<List<Incident>> getIncidents(
             @RequestParam(required = false) IncidentStatus status,
+            @RequestParam(required = false) AnomalySeverity severity,
             @RequestParam(required = false) String service,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant to) {
 
-        if (status != null) {
-            return ResponseEntity.ok(incidentService.findByStatus(status));
-        }
-        if (service != null && !service.isBlank()) {
-            return ResponseEntity.ok(incidentService.findByService(service.trim()));
-        }
-        if (from != null && to != null) {
-            return ResponseEntity.ok(incidentRepository.findByDetectedAtBetween(from, to));
-        }
-
-        return ResponseEntity.ok(incidentService.findAll());
+        List<Incident> results = incidentService.findIncidents(status, severity, service, from, to);
+        return ResponseEntity.ok(results);
     }
 
     /**
-     * Get incident by primary ID.
-     * Example: GET /api/incidents/1
+     * Get incident by ID.
+     * Example: GET /incidents/1
      */
     @GetMapping("/{id}")
     public ResponseEntity<Incident> getIncidentById(@PathVariable Long id) {
@@ -67,24 +59,72 @@ public class IncidentController {
     }
 
     /**
-     * Transition the lifecycle status of an incident.
+     * Acknowledge an incident (transitions from OPEN to INVESTIGATING).
+     * Example: POST /incidents/1/acknowledge
+     */
+    @PostMapping("/{id}/acknowledge")
+    public ResponseEntity<?> acknowledgeIncident(@PathVariable Long id) {
+        try {
+            Incident updated = incidentService.acknowledgeIncident(id);
+            return ResponseEntity.ok(updated);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse(404, e.getMessage()));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse(400, e.getMessage()));
+        }
+    }
+
+    /**
+     * Resolve an incident (transitions to RESOLVED).
+     * Example: POST /incidents/1/resolve
+     */
+    @PostMapping("/{id}/resolve")
+    public ResponseEntity<?> resolveIncident(@PathVariable Long id) {
+        try {
+            Incident updated = incidentService.resolveIncident(id);
+            return ResponseEntity.ok(updated);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse(404, e.getMessage()));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse(400, e.getMessage()));
+        }
+    }
+
+    /**
+     * Close an incident (transitions to CLOSED).
+     * Example: POST /incidents/1/close
+     */
+    @PostMapping("/{id}/close")
+    public ResponseEntity<?> closeIncident(@PathVariable Long id) {
+        try {
+            Incident updated = incidentService.closeIncident(id);
+            return ResponseEntity.ok(updated);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse(404, e.getMessage()));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse(400, e.getMessage()));
+        }
+    }
+
+    /**
+     * Transition the lifecycle status of an incident via status parameter (backward compatibility).
      * Example: PATCH /api/incidents/1/status?status=INVESTIGATING
      */
     @PatchMapping("/{id}/status")
-    public ResponseEntity<Incident> updateIncidentStatus(
+    public ResponseEntity<?> updateIncidentStatus(
             @PathVariable Long id,
             @RequestParam IncidentStatus status) {
         try {
             Incident updated = incidentService.updateStatus(id, status);
             return ResponseEntity.ok(updated);
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.notFound().build();
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse(404, e.getMessage()));
         }
     }
 
     /**
      * Manually create an incident.
-     * Example: POST /api/incidents
+     * Example: POST /incidents
      */
     @PostMapping
     public ResponseEntity<Incident> createIncident(@RequestBody Incident request) {
@@ -101,4 +141,6 @@ public class IncidentController {
         Incident saved = incidentRepository.save(incident);
         return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
+
+    public record ErrorResponse(int status, String error) {}
 }

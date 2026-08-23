@@ -146,6 +146,93 @@ public class IncidentService {
         return saved;
     }
 
+    /**
+     * Acknowledge an incident (transitions from OPEN to INVESTIGATING).
+     */
+    @Transactional
+    public Incident acknowledgeIncident(Long id) {
+        Incident incident = incidentRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Incident not found with id: " + id));
+
+        if (incident.getStatus() != IncidentStatus.OPEN) {
+            throw new IllegalStateException("Cannot acknowledge incident in status: " + incident.getStatus());
+        }
+
+        incident.setStatus(IncidentStatus.INVESTIGATING);
+        Incident saved = incidentRepository.save(incident);
+        log.info("Incident #{} acknowledged (status set to INVESTIGATING)", id);
+        return saved;
+    }
+
+    /**
+     * Resolve an incident (transitions to RESOLVED).
+     */
+    @Transactional
+    public Incident resolveIncident(Long id) {
+        Incident incident = incidentRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Incident not found with id: " + id));
+
+        if (incident.getStatus() == IncidentStatus.CLOSED) {
+            throw new IllegalStateException("Cannot resolve an already closed incident");
+        }
+
+        incident.setStatus(IncidentStatus.RESOLVED);
+        if (incident.getResolvedAt() == null) {
+            incident.setResolvedAt(Instant.now());
+        }
+
+        Incident saved = incidentRepository.save(incident);
+        log.info("Incident #{} resolved (status set to RESOLVED, resolvedAt={})", id, saved.getResolvedAt());
+        return saved;
+    }
+
+    /**
+     * Close an incident (transitions to CLOSED).
+     */
+    @Transactional
+    public Incident closeIncident(Long id) {
+        Incident incident = incidentRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Incident not found with id: " + id));
+
+        incident.setStatus(IncidentStatus.CLOSED);
+        if (incident.getResolvedAt() == null) {
+            incident.setResolvedAt(Instant.now());
+        }
+
+        Incident saved = incidentRepository.save(incident);
+        log.info("Incident #{} closed (status set to CLOSED)", id);
+        return saved;
+    }
+
+    /**
+     * Query incidents with multi-criteria filtering.
+     */
+    @Transactional(readOnly = true)
+    public List<Incident> findIncidents(
+            IncidentStatus status,
+            AnomalySeverity severity,
+            String service,
+            Instant from,
+            Instant to) {
+
+        List<Incident> incidents = incidentRepository.findAll();
+
+        return incidents.stream()
+                .filter(i -> status == null || i.getStatus() == status)
+                .filter(i -> severity == null || i.getSeverity() == severity)
+                .filter(i -> service == null || service.isBlank() ||
+                        (i.getPrimaryService() != null && i.getPrimaryService().equalsIgnoreCase(service.trim())))
+                .filter(i -> {
+                    if (from == null && to == null) return true;
+                    Instant time = i.getDetectedAt() != null ? i.getDetectedAt() : i.getStartedAt();
+                    if (time == null) return false;
+                    boolean afterFrom = (from == null || !time.isBefore(from));
+                    boolean beforeTo = (to == null || !time.isAfter(to));
+                    return afterFrom && beforeTo;
+                })
+                .toList();
+    }
+
     @Transactional(readOnly = true)
     public List<Incident> findAll() {
         return incidentRepository.findAll();

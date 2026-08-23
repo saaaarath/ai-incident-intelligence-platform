@@ -1,5 +1,6 @@
 package com.aiincident.logprocessor.anomaly;
 
+import com.aiincident.logprocessor.incident.IncidentService;
 import com.aiincident.logprocessor.metrics.MetricsAggregationService;
 import com.aiincident.logprocessor.metrics.OperationalMetrics;
 import java.time.Duration;
@@ -9,6 +10,7 @@ import java.util.Collections;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,18 +22,30 @@ public class AnomalyDetectionService {
     private final MetricsAggregationService metricsService;
     private final AnomalyRepository anomalyRepository;
     private final AnomalyDetectionProperties properties;
+    private final IncidentService incidentService;
 
     public AnomalyDetectionService(
             MetricsAggregationService metricsService,
             AnomalyRepository anomalyRepository,
             AnomalyDetectionProperties properties) {
+        this(metricsService, anomalyRepository, properties, null);
+    }
+
+    @Autowired
+    public AnomalyDetectionService(
+            MetricsAggregationService metricsService,
+            AnomalyRepository anomalyRepository,
+            AnomalyDetectionProperties properties,
+            @Autowired(required = false) IncidentService incidentService) {
         this.metricsService = metricsService;
         this.anomalyRepository = anomalyRepository;
         this.properties = properties;
+        this.incidentService = incidentService;
     }
 
     /**
-     * Detect and persist anomalies across all services for a given time window against historical baseline.
+     * Detect and persist anomalies across all services for a given time window against historical baseline,
+     * and automatically convert them into incidents.
      */
     @Transactional
     public List<AnomalyEvent> detectAndSaveAnomalies(
@@ -41,7 +55,11 @@ public class AnomalyDetectionService {
             Instant baselineEnd) {
         List<AnomalyEvent> anomalies = detectAnomalies(currentWindowStart, currentWindowEnd, baselineStart, baselineEnd);
         if (!anomalies.isEmpty()) {
-            return anomalyRepository.saveAll(anomalies);
+            List<AnomalyEvent> saved = anomalyRepository.saveAll(anomalies);
+            if (incidentService != null) {
+                incidentService.processAnomalies(saved);
+            }
+            return saved;
         }
         return List.of();
     }

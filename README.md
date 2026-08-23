@@ -64,8 +64,18 @@ A statistical and threshold-based anomaly detection engine monitors service heal
   - Automatically avoids false alerts during normal service behavior within expected baseline variability.
 - **Anomaly Event Schema**: Every generated anomaly event records `metric`, `service`, `currentValue`, `baselineMean`, `baselineVariability`, `threshold`, `detectedAt`, `severity`, `windowStart`, `windowEnd`, and `message`.
 - **REST Endpoints**:
-  - `GET /api/anomalies`: Query detected anomalies filtered by `service`, `metric`, `severity`, `from`, `to`.
-  - `POST /api/anomalies/detect`: Trigger anomaly detection over specified time windows and persist detected anomaly events.
+## Incident Management
+
+An incident correlation and management engine converts detected anomalies into tracked incidents:
+- **Incident Model**: Stored in `incidents` table with fields `id`, `title`, `severity` (`LOW`, `MEDIUM`, `HIGH`, `CRITICAL`), `status` (`OPEN`, `INVESTIGATING`, `RESOLVED`, `CLOSED`), `primaryService`, `startedAt`, `detectedAt`, and `resolvedAt`.
+- **Automated Incident Creation**: When an anomaly crosses the incident severity threshold (default: `MEDIUM`), an incident is automatically created in `OPEN` status.
+- **Duplicate Incident Prevention**: Consecutive or related anomalies for the same service within an active failure window correlate to the active incident instead of generating duplicate records. If incoming anomalies exhibit higher severity, the active incident's severity is dynamically upgraded.
+- **Lifecycle Transitions**: Full state machine (`OPEN` -> `INVESTIGATING` -> `RESOLVED` -> `CLOSED`). Moving to `RESOLVED` or `CLOSED` automatically records `resolvedAt` timestamp.
+- **REST Endpoints**:
+  - `GET /api/incidents`: Query incidents with optional filtering by `status`, `service`, `from`, `to`.
+  - `GET /api/incidents/{id}`: Retrieve a specific incident.
+  - `PATCH /api/incidents/{id}/status`: Update lifecycle status (`?status=INVESTIGATING`, `?status=RESOLVED`).
+  - `POST /api/incidents`: Manually register an incident.
 
 ## Future Phases
 

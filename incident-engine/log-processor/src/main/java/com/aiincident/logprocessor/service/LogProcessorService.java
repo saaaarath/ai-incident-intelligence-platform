@@ -10,11 +10,11 @@ import java.util.List;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-@Transactional
 public class LogProcessorService {
 
     private static final Logger log = LoggerFactory.getLogger(LogProcessorService.class);
@@ -48,8 +48,9 @@ public class LogProcessorService {
     }
 
     /**
-     * Validate required fields and persist valid log event.
+     * Validate required fields and persist valid log event idempotently.
      */
+    @Transactional
     public Optional<ProcessedLogEvent> processEvent(LogEvent event) {
         if (event == null) {
             log.warn("Rejected log event: LogEvent object is null");
@@ -62,10 +63,13 @@ public class LogProcessorService {
             return Optional.empty();
         }
 
-        // Idempotent check
-        Optional<ProcessedLogEvent> existing = logEventRepository.findByEventId(event.eventId());
+        String eventId = event.eventId().trim();
+
+        // 1. Application-level idempotency pre-check
+        Optional<ProcessedLogEvent> existing = logEventRepository.findByEventId(eventId);
         if (existing.isPresent()) {
-            log.debug("Log event with eventId '{}' was already processed, skipping duplicate persistence", event.eventId());
+            log.info("Duplicate event delivery detected (already persisted): eventId='{}', service='{}', eventType='{}'",
+                    eventId, event.service(), event.eventType());
             return existing;
         }
 
@@ -79,7 +83,7 @@ public class LogProcessorService {
         }
 
         ProcessedLogEvent entity = new ProcessedLogEvent(
-                event.eventId().trim(),
+                eventId,
                 event.timestamp(),
                 event.service().trim(),
                 event.level().trim(),
@@ -90,10 +94,16 @@ public class LogProcessorService {
                 Instant.now()
         );
 
-        ProcessedLogEvent saved = logEventRepository.save(entity);
-        log.info("Persisted log event [id={}, eventId={}, service={}, eventType={}, traceId={}]",
-                saved.getId(), saved.getEventId(), saved.getService(), saved.getEventType(), saved.getTraceId());
-        return Optional.of(saved);
+        // 2. Persist with database-level unique constraint protection against race conditions
+        try {
+            ProcessedLogEvent saved = logEventRepository.saveAndFlush(entity);
+            log.info("Persisted log event [id={}, eventId={}, service={}, eventType={}, traceId={}]",
+                    saved.getId(), saved.getEventId(), saved.getService(), saved.getEventType(), saved.getTraceId());
+            return Optional.of(saved);
+        } catch (DataIntegrityViolationException e) {
+            log.info("Concurrent duplicate event delivery caught by unique constraint: eventId='{}'", eventId);
+            return logEventRepository.findByEventId(eventId);
+        }
     }
 
     public boolean isValid(LogEvent event) {

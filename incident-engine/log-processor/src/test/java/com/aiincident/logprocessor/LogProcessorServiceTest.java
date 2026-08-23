@@ -7,10 +7,15 @@ import com.aiincident.logprocessor.service.LogProcessorService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -182,16 +187,48 @@ class LogProcessorServiceTest {
     }
 
     @Test
-    @DisplayName("Should be idempotent when processing identical eventId twice")
-    void testIdempotency() {
-        LogEvent event = new LogEvent("evt-duplicate", Instant.now(), "order-service", "INFO", "ORDER_CREATED", "trace-dup", "Created", Map.of());
+    @DisplayName("Should be strictly idempotent when processing same event multiple times")
+    void testSequentialDuplicateProcessing() {
+        String eventId = "evt-duplicate-" + UUID.randomUUID();
+        LogEvent event = new LogEvent(eventId, Instant.now(), "order-service", "INFO", "ORDER_CREATED", "trace-dup", "Created", Map.of("attempt", 1));
 
+        // Process 5 times sequentially
         Optional<ProcessedLogEvent> first = logProcessorService.processEvent(event);
         Optional<ProcessedLogEvent> second = logProcessorService.processEvent(event);
+        Optional<ProcessedLogEvent> third = logProcessorService.processEvent(event);
+        Optional<ProcessedLogEvent> fourth = logProcessorService.processEvent(event);
+        Optional<ProcessedLogEvent> fifth = logProcessorService.processEvent(event);
 
         assertThat(first).isPresent();
         assertThat(second).isPresent();
-        assertThat(first.get().getId()).isEqualTo(second.get().getId());
+        assertThat(third).isPresent();
+        assertThat(fourth).isPresent();
+        assertThat(fifth).isPresent();
+
+        Long storedId = first.get().getId();
+        assertThat(second.get().getId()).isEqualTo(storedId);
+        assertThat(third.get().getId()).isEqualTo(storedId);
+        assertThat(fourth.get().getId()).isEqualTo(storedId);
+        assertThat(fifth.get().getId()).isEqualTo(storedId);
+
         assertThat(logEventRepository.count()).isEqualTo(1);
+        assertThat(logEventRepository.findByEventId(eventId)).isPresent();
+    }
+
+    @Test
+    @DisplayName("Should be idempotent when processing identical event from raw JSON multiple times")
+    void testRawJsonDuplicateProcessing() throws Exception {
+        String eventId = "evt-raw-json-" + UUID.randomUUID();
+        LogEvent event = new LogEvent(eventId, Instant.now(), "inventory-service", "INFO", "INVENTORY_RESERVED", "trace-json-dup", "Reserved", Map.of());
+        String json = objectMapper.writeValueAsString(event);
+
+        for (int i = 0; i < 4; i++) {
+            Optional<ProcessedLogEvent> result = logProcessorService.processRawMessage(json);
+            assertThat(result).isPresent();
+            assertThat(result.get().getEventId()).isEqualTo(eventId);
+        }
+
+        assertThat(logEventRepository.count()).isEqualTo(1);
+        assertThat(logEventRepository.findAll().getFirst().getEventId()).isEqualTo(eventId);
     }
 }

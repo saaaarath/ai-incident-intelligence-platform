@@ -75,4 +75,45 @@ class LogProcessorIntegrationTest {
             assertThat(saved.getEventType()).isEqualTo("ORDER_CREATED");
         });
     }
+
+    @Test
+    @DisplayName("Should handle duplicate message delivery via Kafka and maintain exactly one stored record")
+    void testDuplicateKafkaDeliveryIdempotency() throws Exception {
+        Map<String, Object> producerProps = Map.of(
+                ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers,
+                ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class,
+                ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class
+        );
+        KafkaTemplate<String, String> template = new KafkaTemplate<>(new DefaultKafkaProducerFactory<>(producerProps));
+
+        String traceId = "test-dup-trace-" + UUID.randomUUID();
+        String eventId = "dup-kafka-" + UUID.randomUUID();
+        LogEvent event = new LogEvent(
+                eventId,
+                Instant.now(),
+                "payment-service",
+                "INFO",
+                "PAYMENT_CREATED",
+                traceId,
+                "Payment message sent multiple times",
+                Map.of("amount", 75.0)
+        );
+
+        String json = objectMapper.writeValueAsString(event);
+
+        // Send the same message 3 times over Kafka
+        template.send("application-logs", traceId, json);
+        template.send("application-logs", traceId, json);
+        template.send("application-logs", traceId, json);
+
+        await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> {
+            var logs = logEventRepository.findByTraceId(traceId);
+            assertThat(logs).hasSize(1);
+            assertThat(logs.getFirst().getEventId()).isEqualTo(eventId);
+        });
+
+        // Ensure after additional wait time it still remains strictly 1 record
+        Thread.sleep(1000);
+        assertThat(logEventRepository.findByTraceId(traceId)).hasSize(1);
+    }
 }

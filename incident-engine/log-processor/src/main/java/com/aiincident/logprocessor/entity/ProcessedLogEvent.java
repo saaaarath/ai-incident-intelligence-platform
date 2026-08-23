@@ -7,11 +7,15 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import java.time.Instant;
 
 @Entity
 @Table(
         name = "application_logs",
+        uniqueConstraints = {
+                @UniqueConstraint(name = "uk_app_logs_event_id", columnNames = {"event_id"})
+        },
         indexes = {
                 @Index(name = "idx_app_logs_trace_id", columnList = "trace_id"),
                 @Index(name = "idx_app_logs_service", columnList = "service"),
@@ -25,7 +29,7 @@ public class ProcessedLogEvent {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "event_id", nullable = false)
+    @Column(name = "event_id", nullable = false, unique = true)
     private String eventId;
 
     @Column(name = "timestamp", nullable = false)

@@ -8,6 +8,8 @@ import { RcaReportView } from '../rca/RcaReportView';
 import { IncidentTimelineView } from '../timeline/IncidentTimelineView';
 import { IncidentDependencyView } from '../dependencies/IncidentDependencyView';
 import { SimilarIncidentsView } from '../historical/SimilarIncidentsView';
+import { IncidentRunbookRunner } from '../runbooks/IncidentRunbookRunner';
+import { PostmortemGeneratorView } from '../postmortem/PostmortemGeneratorView';
 import { 
   ArrowLeft, 
   Sparkles, 
@@ -22,7 +24,9 @@ import {
   BookOpen, 
   Cpu,
   RefreshCw,
-  AlertCircle
+  AlertCircle,
+  FileCode,
+  FileText
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -209,6 +213,8 @@ export function IncidentDetailPage({
 
   const tabs = [
     { id: 'rca', label: 'AI Root Cause Analysis', icon: Cpu, badge: rcaReport ? 'Ready' : null },
+    { id: 'postmortem', label: 'AI Postmortem', icon: FileText },
+    { id: 'runbooks', label: 'Remediation & Runbooks', icon: FileCode },
     { id: 'timeline', label: 'Timeline & Events', icon: Clock, badge: timeline?.events?.length || null },
     { id: 'dependencies', label: 'Dependencies & Topology', icon: Layers },
     { id: 'similar', label: 'Similar Historical Incidents', icon: BookOpen, badge: similarIncidents?.length || null },
@@ -385,6 +391,24 @@ export function IncidentDetailPage({
             error={rcaError}
             onAnalyze={handleAnalyzeIncident}
             onRetry={loadRca}
+          />
+        )}
+
+        {activeTab === 'postmortem' && (
+          <PostmortemGeneratorView
+            incident={incident}
+          />
+        )}
+
+        {activeTab === 'runbooks' && (
+          <IncidentRunbookRunner
+            incident={incident}
+            onIncidentResolved={() => {
+              loadIncident();
+              if (onIncidentUpdated) {
+                onIncidentUpdated({ ...incident, status: 'RESOLVED' });
+              }
+            }}
           />
         )}
 

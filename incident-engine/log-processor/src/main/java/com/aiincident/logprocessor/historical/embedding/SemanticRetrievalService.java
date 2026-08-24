@@ -60,7 +60,14 @@ public class SemanticRetrievalService {
         KnowledgeDocumentType typeFilter = request.getType();
         HistoricalIncidentCategory categoryFilter = request.getCategory();
 
-        float[] queryVector = embeddingProvider.generateEmbedding(query);
+        float[] queryVector;
+        try {
+            queryVector = embeddingProvider.generateEmbedding(query);
+        } catch (Exception e) {
+            log.warn("Notice: Semantic embedding generation unavailable ({}), returning fallback results.", e.getMessage());
+            return List.of();
+        }
+
         if (queryVector == null || queryVector.length == 0) {
             return List.of();
         }

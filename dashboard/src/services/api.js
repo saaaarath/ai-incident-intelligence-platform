@@ -237,5 +237,74 @@ export const incidentApi = {
       method: 'POST',
     });
   },
+
+  /**
+   * Query operational runbooks with optional filters.
+   */
+  async getRunbooks(params = {}) {
+    const query = new URLSearchParams();
+    if (params.category) query.set('category', params.category);
+    if (params.service) query.set('service', params.service);
+    if (params.query) query.set('query', params.query);
+    const queryString = query.toString() ? `?${query.toString()}` : '';
+    return await request(`/api/runbooks${queryString}`);
+  },
+
+  /**
+   * Get runbook by ID or code (e.g. RB-DB-001).
+   */
+  async getRunbookById(id) {
+    return await request(`/api/runbooks/${id}`);
+  },
+
+  /**
+   * Execute an operational runbook step or complete mitigation workflow.
+   */
+  async executeRunbook(id, payload = {}) {
+    return await request(`/api/runbooks/${id}/execute`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  /**
+   * Generate an AI Postmortem report for a specific incident.
+   */
+  async generatePostmortem(incidentId) {
+    return await request(`/api/postmortems/generate/${incidentId}`, {
+      method: 'POST',
+    });
+  },
+
+  /**
+   * Query postmortems with optional filters.
+   */
+  async getPostmortems(params = {}) {
+    const query = new URLSearchParams();
+    if (params.category) query.set('category', params.category);
+    if (params.incidentId) query.set('incidentId', params.incidentId);
+    if (params.query) query.set('query', params.query);
+    const queryString = query.toString() ? `?${query.toString()}` : '';
+    return await request(`/api/postmortems${queryString}`);
+  },
+
+  /**
+   * Get postmortem by ID or code.
+   */
+  async getPostmortemById(id) {
+    return await request(`/api/postmortems/${id}`);
+  },
+
+  /**
+   * Save or publish a postmortem record.
+   */
+  async savePostmortem(postmortemData) {
+    return await request('/api/postmortems', {
+      method: 'POST',
+      body: JSON.stringify(postmortemData),
+    });
+  },
 };
+
+
 

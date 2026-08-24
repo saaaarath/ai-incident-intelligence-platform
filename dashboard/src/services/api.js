@@ -63,22 +63,13 @@ export const incidentApi = {
    */
   async checkHealth() {
     try {
-      const response = await fetch(`${API_BASE_URL}/actuator/health`, {
+      const response = await fetch(`${API_BASE_URL}/incidents`, {
         method: 'GET',
         headers: { 'Accept': 'application/json' },
       });
       return response.ok;
-    } catch (e) {
-      // Fallback: try fetching incidents list with limit 1
-      try {
-        const response = await fetch(`${API_BASE_URL}/incidents`, {
-          method: 'GET',
-          headers: { 'Accept': 'application/json' },
-        });
-        return response.ok;
-      } catch {
-        return false;
-      }
+    } catch {
+      return false;
     }
   },
 
@@ -114,6 +105,36 @@ export const incidentApi = {
   },
 
   /**
+   * Fetch structured chronological timeline for an incident.
+   */
+  async getIncidentTimeline(id, bufferMinutes = 10) {
+    return await request(`/incidents/${id}/timeline?bufferMinutes=${bufferMinutes}`);
+  },
+
+  /**
+   * Retrieve the latest persisted AI RCA report for an incident.
+   */
+  async getIncidentRca(id) {
+    return await request(`/incidents/${id}/analysis`);
+  },
+
+  /**
+   * Trigger AI Root Cause Analysis for an incident.
+   */
+  async analyzeIncident(id, forceReanalyze = true) {
+    return await request(`/incidents/${id}/analyze?forceReanalyze=${forceReanalyze}`, {
+      method: 'POST',
+    });
+  },
+
+  /**
+   * Retrieve full RCA context evidence package.
+   */
+  async getRcaContext(id) {
+    return await request(`/incidents/${id}/rca-context`);
+  },
+
+  /**
    * Fetch historically similar incidents for an incident.
    */
   async getSimilarIncidents(id, topK = 5) {
@@ -128,10 +149,24 @@ export const incidentApi = {
   },
 
   /**
-   * Fetch full AI context for an incident.
+   * Fetch full operational knowledge context (similar + runbooks + postmortems).
    */
   async getIncidentContext(id, topK = 3) {
     return await request(`/incidents/${id}/context?topK=${topK}`);
+  },
+
+  /**
+   * Fetch service topology and upstream/downstream dependencies.
+   */
+  async getServiceTopology(service) {
+    return await request(`/api/dependencies/${service}`);
+  },
+
+  /**
+   * Fetch all registered dependencies across services.
+   */
+  async getAllDependencies() {
+    return await request('/api/dependencies');
   },
 
   /**

@@ -3,7 +3,6 @@ import { IncidentStats } from './IncidentStats';
 import { IncidentFilters } from './IncidentFilters';
 import { IncidentTable } from './IncidentTable';
 import { IncidentCard } from './IncidentCard';
-import { IncidentDetail } from './IncidentDetail';
 import { LoadingState } from '../common/LoadingState';
 import { ErrorState } from '../common/ErrorState';
 import { EmptyState } from '../common/EmptyState';
@@ -13,14 +12,13 @@ export function IncidentList({
   loading,
   error,
   onRetry,
-  onIncidentUpdated
+  onSelectIncident
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [severityFilter, setSeverityFilter] = useState('ALL');
   const [serviceFilter, setServiceFilter] = useState('ALL');
   const [viewMode, setViewMode] = useState('table');
-  const [selectedIncident, setSelectedIncident] = useState(null);
 
   // Extract unique services from incident list for filtering
   const availableServices = useMemo(() => {
@@ -64,13 +62,6 @@ export function IncidentList({
     });
   }, [incidents, statusFilter, severityFilter, serviceFilter, searchQuery]);
 
-  const handleIncidentUpdated = (updated) => {
-    setSelectedIncident(updated);
-    if (onIncidentUpdated) {
-      onIncidentUpdated(updated);
-    }
-  };
-
   return (
     <div className="flex flex-col gap-6">
       <IncidentStats incidents={incidents} />
@@ -113,8 +104,7 @@ export function IncidentList({
         viewMode === 'table' ? (
           <IncidentTable
             incidents={filteredIncidents}
-            selectedIncidentId={selectedIncident?.id}
-            onSelectIncident={setSelectedIncident}
+            onSelectIncident={onSelectIncident}
           />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -122,20 +112,11 @@ export function IncidentList({
               <IncidentCard
                 key={incident.id}
                 incident={incident}
-                isSelected={selectedIncident?.id === incident.id}
-                onClick={setSelectedIncident}
+                onClick={onSelectIncident}
               />
             ))}
           </div>
         )
-      )}
-
-      {selectedIncident && (
-        <IncidentDetail
-          incident={selectedIncident}
-          onClose={() => setSelectedIncident(null)}
-          onIncidentUpdated={handleIncidentUpdated}
-        />
       )}
     </div>
   );

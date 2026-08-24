@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { AppShell } from './components/layout/AppShell';
 import { IncidentList } from './components/incidents/IncidentList';
+import { IncidentDetailPage } from './components/incidents/IncidentDetailPage';
 import { ServicesView } from './components/views/ServicesView';
 import { KnowledgeView } from './components/views/KnowledgeView';
 import { RcaView } from './components/views/RcaView';
@@ -8,6 +9,7 @@ import { incidentApi } from './services/api';
 
 export function App() {
   const [currentView, setCurrentView] = useState('incidents');
+  const [selectedIncidentId, setSelectedIncidentId] = useState(null);
   const [incidents, setIncidents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -47,20 +49,29 @@ export function App() {
     );
   };
 
+  const handleSelectIncident = (incident) => {
+    setSelectedIncidentId(incident.id);
+  };
+
+  const handleViewChange = (viewId) => {
+    setCurrentView(viewId);
+    setSelectedIncidentId(null);
+  };
+
   const openCount = incidents.filter(i => (i.status || '').toUpperCase() === 'OPEN').length;
   const activeCount = incidents.filter(i => ['OPEN', 'INVESTIGATING'].includes((i.status || '').toUpperCase())).length;
 
   const viewTitles = {
-    incidents: 'Incident Stream & Operations',
+    incidents: selectedIncidentId ? `Incident Investigation: INC-${selectedIncidentId}` : 'Incident Stream & Operations',
     metrics: 'Telemetry & Services Overview',
     knowledge: 'Knowledge Base & Runbooks',
-    rca: 'AI Root Cause Analysis'
+    rca: 'AI Root Cause Analysis Engine'
   };
 
   return (
     <AppShell
       currentView={currentView}
-      onViewChange={setCurrentView}
+      onViewChange={handleViewChange}
       viewTitle={viewTitles[currentView] || 'Dashboard'}
       onRefresh={() => fetchIncidents(true)}
       isRefreshing={isRefreshing}
@@ -69,13 +80,21 @@ export function App() {
       backendStatus={backendStatus}
     >
       {currentView === 'incidents' && (
-        <IncidentList
-          incidents={incidents}
-          loading={loading}
-          error={error}
-          onRetry={() => fetchIncidents(false)}
-          onIncidentUpdated={handleIncidentUpdated}
-        />
+        selectedIncidentId ? (
+          <IncidentDetailPage
+            incidentId={selectedIncidentId}
+            onBack={() => setSelectedIncidentId(null)}
+            onIncidentUpdated={handleIncidentUpdated}
+          />
+        ) : (
+          <IncidentList
+            incidents={incidents}
+            loading={loading}
+            error={error}
+            onRetry={() => fetchIncidents(false)}
+            onSelectIncident={handleSelectIncident}
+          />
+        )
       )}
 
       {currentView === 'metrics' && <ServicesView />}

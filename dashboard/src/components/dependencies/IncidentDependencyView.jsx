@@ -2,6 +2,7 @@ import React from 'react';
 import { Card, CardContent } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
+import { ServiceDependencyGraph } from './ServiceDependencyGraph';
 import { 
   Server, 
   ArrowRight, 
@@ -88,7 +89,16 @@ export function IncidentDependencyView({
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Affected Services Breakdown */}
+      {/* 1. Visual Dependency Graph */}
+      <ServiceDependencyGraph
+        primaryService={incident?.primaryService}
+        rootService={incident?.rootService}
+        affectedServices={affectedServices}
+        metric={incident?.metric}
+        severity={incident?.severity}
+      />
+
+      {/* 2. Affected Services Breakdown */}
       <div>
         <h3 className="text-base font-semibold text-gray-100">Affected Services & Impact Scope</h3>
         <p className="text-xs text-gray-400 mt-0.5">

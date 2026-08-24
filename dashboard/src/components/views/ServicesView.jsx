@@ -2,6 +2,7 @@ import React from 'react';
 import { Server, Activity, CheckCircle2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
 import { Badge } from '../ui/badge';
+import { ServiceDependencyGraph } from '../dependencies/ServiceDependencyGraph';
 
 export function ServicesView() {
   const services = [
@@ -14,11 +15,18 @@ export function ServicesView() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h3 className="text-base font-semibold text-gray-100">Monitored Architecture & Services</h3>
+        <h3 className="text-base font-semibold text-gray-100">Monitored Architecture & Topology</h3>
         <p className="text-xs text-gray-400 mt-0.5">
-          Live microservices and telemetry ingestion pipeline
+          Live microservices, inter-service dependency flow, and telemetry pipeline
         </p>
       </div>
+
+      {/* Global Dependency Visualizer */}
+      <ServiceDependencyGraph
+        primaryService=""
+        rootService=""
+        affectedServices={[]}
+      />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {services.map((svc) => (
@@ -45,3 +53,4 @@ export function ServicesView() {
     </div>
   );
 }
+

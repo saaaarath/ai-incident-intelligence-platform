@@ -4,12 +4,16 @@ import com.aiincident.logprocessor.historical.HistoricalIncidentCategory;
 import com.aiincident.logprocessor.historical.KnowledgeDocument;
 import com.aiincident.logprocessor.historical.KnowledgeDocumentService;
 import com.aiincident.logprocessor.historical.KnowledgeDocumentType;
+import com.aiincident.logprocessor.historical.embedding.SemanticRetrievalRequest;
+import com.aiincident.logprocessor.historical.embedding.SemanticRetrievalService;
+import com.aiincident.logprocessor.historical.embedding.SemanticSearchResult;
 import java.util.List;
 import java.util.Map;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -19,9 +23,13 @@ import org.springframework.web.bind.annotation.RestController;
 public class KnowledgeController {
 
     private final KnowledgeDocumentService knowledgeService;
+    private final SemanticRetrievalService semanticRetrievalService;
 
-    public KnowledgeController(KnowledgeDocumentService knowledgeService) {
+    public KnowledgeController(
+            KnowledgeDocumentService knowledgeService,
+            SemanticRetrievalService semanticRetrievalService) {
         this.knowledgeService = knowledgeService;
+        this.semanticRetrievalService = semanticRetrievalService;
     }
 
     /**
@@ -51,6 +59,86 @@ public class KnowledgeController {
         return knowledgeService.getDocumentById(documentId)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    /**
+     * Semantic similarity search over operational knowledge via JSON request body.
+     * Example: POST /api/knowledge/retrieve
+     * Body: { "query": "database connection pool timeout", "topK": 5, "type": "RUNBOOK" }
+     */
+    @PostMapping("/retrieve")
+    public ResponseEntity<List<SemanticSearchResult>> retrieveSemantically(
+            @RequestBody SemanticRetrievalRequest request) {
+        List<SemanticSearchResult> results = semanticRetrievalService.search(request);
+        return ResponseEntity.ok(results);
+    }
+
+    /**
+     * Semantic similarity search over operational knowledge via query parameters.
+     * Example: GET /api/knowledge/retrieve?query=database connection pool timeout&topK=5&type=RUNBOOK
+     */
+    @GetMapping("/retrieve")
+    public ResponseEntity<List<SemanticSearchResult>> retrieveSemanticallyGet(
+            @RequestParam String query,
+            @RequestParam(defaultValue = "5") Integer topK,
+            @RequestParam(required = false) Double minScore,
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) String category) {
+
+        SemanticRetrievalRequest request = new SemanticRetrievalRequest(query, topK);
+        if (minScore != null) {
+            request.setMinScore(minScore);
+        }
+        request.setType(KnowledgeDocumentType.fromString(type));
+        request.setCategory(HistoricalIncidentCategory.fromString(category));
+
+        List<SemanticSearchResult> results = semanticRetrievalService.search(request);
+        return ResponseEntity.ok(results);
+    }
+
+    /**
+     * Dedicated endpoint to find historically similar incidents for an incident description.
+     * Example: GET /api/knowledge/similar-incidents?description=HikariCP timeout in payment-service&topK=3
+     */
+    @GetMapping("/similar-incidents")
+    public ResponseEntity<List<SemanticSearchResult>> findSimilarIncidents(
+            @RequestParam(name = "description", required = false) String description,
+            @RequestParam(name = "query", required = false) String query,
+            @RequestParam(defaultValue = "5") Integer topK) {
+
+        String text = description != null && !description.isBlank() ? description : query;
+        List<SemanticSearchResult> results = semanticRetrievalService.findSimilarIncidents(text, topK);
+        return ResponseEntity.ok(results);
+    }
+
+    /**
+     * Dedicated endpoint to find relevant operational runbooks for an incident description.
+     * Example: GET /api/knowledge/relevant-runbooks?description=HikariCP timeout in payment-service&topK=3
+     */
+    @GetMapping("/relevant-runbooks")
+    public ResponseEntity<List<SemanticSearchResult>> findRelevantRunbooks(
+            @RequestParam(name = "description", required = false) String description,
+            @RequestParam(name = "query", required = false) String query,
+            @RequestParam(defaultValue = "5") Integer topK) {
+
+        String text = description != null && !description.isBlank() ? description : query;
+        List<SemanticSearchResult> results = semanticRetrievalService.findRelevantRunbooks(text, topK);
+        return ResponseEntity.ok(results);
+    }
+
+    /**
+     * Dedicated endpoint to find relevant postmortems for an incident description.
+     * Example: GET /api/knowledge/relevant-postmortems?description=HikariCP timeout in payment-service&topK=3
+     */
+    @GetMapping("/relevant-postmortems")
+    public ResponseEntity<List<SemanticSearchResult>> findRelevantPostmortems(
+            @RequestParam(name = "description", required = false) String description,
+            @RequestParam(name = "query", required = false) String query,
+            @RequestParam(defaultValue = "5") Integer topK) {
+
+        String text = description != null && !description.isBlank() ? description : query;
+        List<SemanticSearchResult> results = semanticRetrievalService.findRelevantPostmortems(text, topK);
+        return ResponseEntity.ok(results);
     }
 
     /**

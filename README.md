@@ -222,6 +222,19 @@ Operational knowledge embedding pipeline (`Document -> Chunk -> Embedding Model/
   - `GET /api/embeddings`: Query stored embeddings by `documentId` or `documentType`.
   - `GET /api/embeddings/stats`: Get metrics on total vector records, active provider, model, dimension, and chunk configuration.
 
+## Semantic Similarity Search & Retrieval
+
+Semantic search over operational knowledge base using vector embeddings and cosine similarity scoring:
+- **Retrieval Engine**:
+  - [SemanticRetrievalService](file:///c:/Users/admin/Desktop/Projects/AI-SRE/incident-engine/log-processor/src/main/java/com/aiincident/logprocessor/historical/embedding/SemanticRetrievalService.java): Embeds incident descriptions, computes vector cosine similarity against all stored knowledge chunks, groups best matching chunks by document, applies configurable thresholds (`minScore`, `topK`), and returns ranked results.
+  - [SemanticSearchResult](file:///c:/Users/admin/Desktop/Projects/AI-SRE/incident-engine/log-processor/src/main/java/com/aiincident/logprocessor/historical/embedding/SemanticSearchResult.java): Complete output DTO with `documentId`, `type`, `similarityScore`, `title`, `category`, `content`, `matchedChunk`, `chunkIndex`, and `metadata`.
+- **REST Endpoints**:
+  - `POST /api/knowledge/retrieve`: Perform semantic search via JSON request body (`query`, `topK`, `minScore`, `type`, `category`).
+  - `GET /api/knowledge/retrieve`: Perform semantic search via query parameters (`query`, `topK`, `minScore`, `type`, `category`).
+  - `GET /api/knowledge/similar-incidents`: Find historically similar incidents given an active incident description.
+  - `GET /api/knowledge/relevant-runbooks`: Find actionable runbooks for mitigating an ongoing failure scenario.
+  - `GET /api/knowledge/relevant-postmortems`: Find relevant post-mortem records.
+
 ## Future Phases
 
 1. Extend the service domain APIs and PostgreSQL persistence.

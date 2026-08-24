@@ -19,6 +19,7 @@
 - Postmortems and Runbooks: Operational knowledge documents with structured runbooks for 8 major failure domains (`/api/runbooks`), linked incident postmortems (`/api/postmortems`), and unified searchable knowledge documents (`/api/knowledge`) formatted for text search and future vector embeddings / RAG retrieval.
 - pgvector Vector Database Integration: PostgreSQL container configured with `pgvector/pgvector:pg16`, `vector` extension, and `document_embeddings` schema storing documentId, documentType, content, chunk, vector embedding, and metadata for knowledge retrieval.
 - Document Embedding Pipeline: Ingestion pipeline (`Document -> Chunk -> Embedding Model/API -> pgvector`) chunking operational knowledge documents (Historical Incidents, Runbooks, Postmortems), vectorizing them via configurable embedding providers (deterministic mock / OpenAI / Ollama), validating vector dimensions, handling provider failures gracefully, and auto-indexing vectors on startup with REST management endpoints (`/api/embeddings`).
+- Semantic Retrieval: Vector similarity search using cosine similarity over indexed operational knowledge embeddings, returning ranked top-k documents (`documentId`, `type`, `similarityScore`, `content`, `matchedChunk`, `metadata`) with configurable top-k and thresholds, and dedicated endpoints for similar incidents, relevant runbooks, and postmortems (`/api/knowledge/retrieve`, `/api/knowledge/similar-incidents`, `/api/knowledge/relevant-runbooks`).
 
 
 

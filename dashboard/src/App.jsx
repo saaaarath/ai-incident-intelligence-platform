@@ -5,6 +5,7 @@ import { IncidentDetailPage } from './components/incidents/IncidentDetailPage';
 import { ServicesView } from './components/views/ServicesView';
 import { KnowledgeView } from './components/views/KnowledgeView';
 import { RcaView } from './components/views/RcaView';
+import { FailureInjectionSimulator } from './components/chaos/FailureInjectionSimulator';
 import { incidentApi } from './services/api';
 
 export function App() {
@@ -63,6 +64,7 @@ export function App() {
 
   const viewTitles = {
     incidents: selectedIncidentId ? `Incident Investigation: INC-${selectedIncidentId}` : 'Incident Stream & Operations',
+    chaos: 'Failure Injection & Chaos Simulator',
     metrics: 'Telemetry & Services Overview',
     knowledge: 'Knowledge Base & Runbooks',
     rca: 'AI Root Cause Analysis Engine'
@@ -97,6 +99,14 @@ export function App() {
         )
       )}
 
+      {currentView === 'chaos' && (
+        <FailureInjectionSimulator
+          onNavigateToIncident={(id) => {
+            setSelectedIncidentId(id);
+            setCurrentView('incidents');
+          }}
+        />
+      )}
       {currentView === 'metrics' && <ServicesView />}
       {currentView === 'knowledge' && <KnowledgeView />}
       {currentView === 'rca' && <RcaView />}
@@ -105,3 +115,4 @@ export function App() {
 }
 
 export default App;
+

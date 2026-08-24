@@ -4,13 +4,15 @@ import {
   Flame, 
   Layers, 
   BookOpen, 
-  Cpu
+  Cpu,
+  Zap
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 export function Sidebar({ currentView, onViewChange, openIncidentsCount = 0, backendStatus = 'checking' }) {
   const navItems = [
     { id: 'incidents', label: 'Incident Stream', icon: Flame, badge: openIncidentsCount > 0 ? openIncidentsCount : null },
+    { id: 'chaos', label: 'Chaos Simulator', icon: Zap, badgeText: 'DEMO' },
     { id: 'metrics', label: 'Telemetry & Services', icon: Layers },
     { id: 'knowledge', label: 'Runbooks & Knowledge', icon: BookOpen },
     { id: 'rca', label: 'AI Root Cause Analysis', icon: Cpu },
@@ -53,6 +55,16 @@ export function Sidebar({ currentView, onViewChange, openIncidentsCount = 0, bac
                   isActive ? "bg-indigo-500/30 text-indigo-200" : "bg-gray-800 text-gray-400"
                 )}>
                   {item.badge}
+                </span>
+              )}
+              {item.badgeText && (
+                <span className={cn(
+                  "ml-auto text-[10px] px-1.5 py-0.5 rounded font-mono font-bold tracking-wider uppercase border",
+                  isActive 
+                    ? "bg-rose-500/20 text-rose-300 border-rose-500/30" 
+                    : "bg-rose-950/30 text-rose-400 border-rose-500/20"
+                )}>
+                  {item.badgeText}
                 </span>
               )}
             </button>

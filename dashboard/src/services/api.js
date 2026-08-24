@@ -199,4 +199,43 @@ export const incidentApi = {
       body: JSON.stringify(incidentData),
     });
   },
+
+  /**
+   * Get failure simulator status and active scenarios.
+   */
+  async getFailureStatus() {
+    return await request('/api/failures/status');
+  },
+
+  /**
+   * Inject a development/demo failure scenario.
+   */
+  async injectFailure(payload, isDemoMode = true) {
+    return await request('/api/failures/inject', {
+      method: 'POST',
+      headers: {
+        'X-Demo-Mode': isDemoMode ? 'true' : 'false',
+      },
+      body: JSON.stringify(payload),
+    });
+  },
+
+  /**
+   * Disable a specific active failure scenario.
+   */
+  async disableFailure(scenarioId) {
+    return await request(`/api/failures/active/${scenarioId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  /**
+   * Reset all active failure injections back to healthy baseline.
+   */
+  async resetAllFailures() {
+    return await request('/api/failures/reset', {
+      method: 'POST',
+    });
+  },
 };
+

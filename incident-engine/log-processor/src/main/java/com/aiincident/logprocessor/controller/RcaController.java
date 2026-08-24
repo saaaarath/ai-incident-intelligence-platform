@@ -5,6 +5,8 @@ import com.aiincident.logprocessor.rca.RcaContext;
 import com.aiincident.logprocessor.rca.RcaContextBuilder;
 import com.aiincident.logprocessor.rca.RcaContextBuilder.RcaContextOptions;
 import com.aiincident.logprocessor.rca.RcaReport;
+import com.aiincident.logprocessor.rca.RcaValidationResult;
+import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -16,7 +18,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Controller exposing the AI Root Cause Analysis (RCA) Context and LLM RCA Engine APIs.
+ * Controller exposing the AI Root Cause Analysis (RCA) Context, LLM RCA Engine,
+ * and Evidence Grounding Validation APIs.
  */
 @RestController
 @RequestMapping({"/incidents", "/api/incidents"})
@@ -116,4 +119,28 @@ public class RcaController {
         RcaReport report = llmRcaEngine.analyzeContext(context);
         return ResponseEntity.ok(report);
     }
+
+    /**
+     * Validate an arbitrary RCA report against an RcaContext evidence package.
+     * Example: POST /api/incidents/validate-rca
+     */
+    @PostMapping("/validate-rca")
+    public ResponseEntity<RcaValidationResult> validateRca(@RequestBody RcaValidationRequest request) {
+        if (llmRcaEngine == null) {
+            return ResponseEntity.notFound().build();
+        }
+        if (request == null || request.report() == null) {
+            return ResponseEntity.badRequest().body(RcaValidationResult.invalid(
+                    RcaValidationResult.RcaValidationStatus.INVALID_SCHEMA,
+                    List.of("Request must include a non-null 'report' object"),
+                    List.of(),
+                    List.of()
+            ));
+        }
+
+        RcaValidationResult result = llmRcaEngine.validateReport(request.report(), request.context());
+        return ResponseEntity.ok(result);
+    }
+
+    public record RcaValidationRequest(RcaReport report, RcaContext context) {}
 }

@@ -86,8 +86,6 @@ class IncidentCorrelationServiceTest {
         when(incidentRepository.save(any(Incident.class))).thenAnswer(inv -> {
             Incident inc = inv.getArgument(0);
             if (inc.getId() == null) {
-                inc = new Incident(inc.getTitle(), inc.getSeverity(), inc.getStatus(), inc.getPrimaryService(), inc.getStartedAt(), inc.getDetectedAt(), inc.getDescription(), inc.getMetric());
-                // simulate JPA id assignment
                 try {
                     java.lang.reflect.Field idField = Incident.class.getDeclaredField("id");
                     idField.setAccessible(true);

@@ -163,6 +163,27 @@ A unified, chronologically sorted incident timeline synthesizes 5 operational ev
 - **REST Endpoints**:
   - `GET /incidents/{id}/timeline` (or `GET /api/incidents/{id}/timeline`): Retrieve complete chronological timeline for an incident with optional `bufferMinutes` and `types` filtering.
 
+## Historical Incident Dataset
+
+A structured operational knowledge repository of real-world historical incidents and post-mortems persisted in PostgreSQL:
+- **Coverage of 8 Operational Failure Categories**:
+  1. `DATABASE_CONNECTION_EXHAUSTION`: Pool saturation, lock contention, unclosed transactions.
+  2. `DEPLOYMENT_REGRESSION`: Serialization mismatches, missing configuration/secrets, incompatible timestamp formats.
+  3. `SERVICE_UNAVAILABLE`: JVM OutOfMemoryError crashes, Kubernetes node evictions, readiness probe flapping.
+  4. `NETWORK_LATENCY`: Cross-AZ interconnect packet loss, CoreDNS saturation, NAT Gateway port exhaustion.
+  5. `MEMORY_PRESSURE`: Unbounded cache growth, ThreadLocal leaks in security contexts, large batch report memory starvation.
+  6. `CACHE_FAILURE`: Redis TTL stampede storms, local in-memory cache desynchronization, token cache cold-start surges.
+  7. `DEPENDENCY_TIMEOUT`: Third-party payment gateway HTTP socket hangs, downstream stock check latency, external webhook degradation.
+  8. `MESSAGE_PROCESSING_FAILURE`: Kafka poison pill payloads, consumer group rebalance loops, consumer deserialization failures.
+- **Incident Knowledge Schema**: Each record contains `incidentId`, `title`, `category`, `severity`, `symptoms`, `timeline`, `rootCause`, `resolution`, `affectedServices`, `prevention`, `occurredAt`, and `durationMinutes`.
+- **PostgreSQL Persistence & Seeding**: Automatically seeds 24 canonical incident post-mortems idempotently on startup.
+- **REST Endpoints**:
+  - `GET /api/historical-incidents`: Query historical incidents with optional filtering by `category`, `service`, and full-text `query` search across symptoms and root cause.
+  - `GET /api/historical-incidents/{id}`: Retrieve historical incident by numeric ID or code (e.g. `HIST-INC-001`).
+  - `GET /api/historical-incidents/categories`: List all 8 failure categories.
+  - `POST /api/historical-incidents`: Register a new historical operational record.
+  - `POST /api/historical-incidents/seed`: Trigger dataset re-seeding into PostgreSQL.
+
 ## Future Phases
 
 1. Extend the service domain APIs and PostgreSQL persistence.

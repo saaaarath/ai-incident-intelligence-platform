@@ -145,7 +145,7 @@ public class IncidentCorrelationService {
                     IncidentStatus.OPEN,
                     service,
                     eventTime,
-                    Instant.now(),
+                    eventTime != null ? eventTime : Instant.now(),
                     event.getMessage(),
                     event.getEventType()
             );

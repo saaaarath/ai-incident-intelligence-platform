@@ -184,6 +184,30 @@ A structured operational knowledge repository of real-world historical incidents
   - `POST /api/historical-incidents`: Register a new historical operational record.
   - `POST /api/historical-incidents/seed`: Trigger dataset re-seeding into PostgreSQL.
 
+## Postmortems and Runbooks
+
+Comprehensive operational knowledge documentation structured for human operators and ready for vector embedding and retrieval:
+- **Operational Runbooks**:
+  - Structured guides for the 8 major failure domains (`RB-DB-001`, `RB-DEPLOY-001`, `RB-UNAVAIL-001`, `RB-NET-001`, `RB-MEM-001`, `RB-CACHE-001`, `RB-TIMEOUT-001`, `RB-MSG-001`).
+  - Contains `runbookId`, `title`, `category`, `severity`, `applicableServices`, `triggerSymptoms`, `prerequisites`, `mitigationSteps`, `verificationSteps`, `escalationPath`, `content` (markdown), and `tags`.
+  - **REST Endpoints**:
+    - `GET /api/runbooks`: Query runbooks with filtering by `category`, `service`, and `query`.
+    - `GET /api/runbooks/{id}`: Retrieve runbook by ID or code (e.g. `RB-DB-001`).
+    - `POST /api/runbooks`: Register a custom operational runbook.
+- **Incident Postmortems**:
+  - Post-mortem records linked directly to historical incidents (`PM-HIST-INC-001` .. `PM-HIST-INC-024`).
+  - Contains `postmortemId`, `incidentId`, `title`, `category`, `severity`, `leadInvestigator`, `executiveSummary`, `impactSummary`, `rootCauseAnalysis`, `detectionAndResponse`, `actionItems`, `lessonsLearned`, and `content` (markdown).
+  - **REST Endpoints**:
+    - `GET /api/postmortems`: Query postmortems filtered by `category`, `incidentId`, and `query`.
+    - `GET /api/postmortems/{id}`: Retrieve postmortem by ID, postmortemId, or linked incidentId.
+    - `POST /api/postmortems`: Register a custom postmortem record.
+- **Unified Knowledge Documents**:
+  - Standardized document model aggregating Historical Incidents, Postmortems, and Runbooks into embeddable document representations with uniform metadata.
+  - **REST Endpoints**:
+    - `GET /api/knowledge`: Full-text search and filtering across all knowledge documents (`type`, `category`, `service`, `query`).
+    - `GET /api/knowledge/{documentId}`: Retrieve unified document by canonical ID (e.g. `INC:HIST-INC-001`, `RB:RB-DB-001`, `PM:PM-HIST-INC-001`).
+    - `POST /api/knowledge/seed`: Trigger full operational knowledge re-seeding into PostgreSQL.
+
 ## Future Phases
 
 1. Extend the service domain APIs and PostgreSQL persistence.

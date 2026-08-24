@@ -16,6 +16,7 @@
 - Primary Failure vs Downstream Symptoms: Multi-factor scoring engine (temporal precedence, dependency position, error severity, error burst frequency) distinguishing root cause originating failures from downstream cascading symptoms.
 - Unified Incident Timeline: Chronological timeline service integrating deployment milestones, statistical anomaly breaches, service failure evidence, windowed metric spikes, and structured operational log events.
 - Historical Incident Dataset: Structured operational knowledge base seeded in PostgreSQL with 24 realistic post-mortems across 8 failure categories (database connection exhaustion, deployment regression, service unavailable, network latency, memory pressure, cache failure, dependency timeout, message-processing failure) with structured titles, symptoms, timelines, root causes, resolutions, affected services, and prevention plans exposed via `/api/historical-incidents` REST endpoints.
+- Postmortems and Runbooks: Operational knowledge documents with structured runbooks for 8 major failure domains (`/api/runbooks`), linked incident postmortems (`/api/postmortems`), and unified searchable knowledge documents (`/api/knowledge`) formatted for text search and future vector embeddings / RAG retrieval.
 
 
 

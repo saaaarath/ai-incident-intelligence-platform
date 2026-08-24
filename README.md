@@ -208,6 +208,15 @@ Comprehensive operational knowledge documentation structured for human operators
     - `GET /api/knowledge/{documentId}`: Retrieve unified document by canonical ID (e.g. `INC:HIST-INC-001`, `RB:RB-DB-001`, `PM:PM-HIST-INC-001`).
     - `POST /api/knowledge/seed`: Trigger full operational knowledge re-seeding into PostgreSQL.
 
+## pgvector Vector Database Integration
+
+Vector embedding persistence powered by PostgreSQL `pgvector`:
+- **Docker Compose Configuration**: Uses `pgvector/pgvector:pg16` with the `vector` extension auto-initialized via `/docker-entrypoint-initdb.d/init-pgvector.sql`.
+- **Document Embeddings Schema**:
+  - `document_embeddings` table stores `documentId`, `documentType`, `content`, `chunk`, `embedding` (`vector`), `metadata` (JSON), `chunkIndex`, and `createdAt`.
+  - [DocumentEmbedding](file:///c:/Users/admin/Desktop/Projects/AI-SRE/incident-engine/log-processor/src/main/java/com/aiincident/logprocessor/historical/DocumentEmbedding.java) JPA Entity with [EmbeddingConverter](file:///c:/Users/admin/Desktop/Projects/AI-SRE/incident-engine/log-processor/src/main/java/com/aiincident/logprocessor/historical/EmbeddingConverter.java) for seamless float array vector persistence.
+  - [DocumentEmbeddingService](file:///c:/Users/admin/Desktop/Projects/AI-SRE/incident-engine/log-processor/src/main/java/com/aiincident/logprocessor/historical/DocumentEmbeddingService.java) providing cosine similarity, Euclidean distance, and dot product vector mathematics.
+
 ## Future Phases
 
 1. Extend the service domain APIs and PostgreSQL persistence.

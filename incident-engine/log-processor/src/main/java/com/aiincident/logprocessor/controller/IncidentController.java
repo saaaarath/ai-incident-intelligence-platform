@@ -7,6 +7,9 @@ import com.aiincident.logprocessor.incident.IncidentEvidence;
 import com.aiincident.logprocessor.incident.IncidentRepository;
 import com.aiincident.logprocessor.incident.IncidentService;
 import com.aiincident.logprocessor.incident.IncidentStatus;
+import com.aiincident.logprocessor.historical.embedding.IncidentRetrievalContext;
+import com.aiincident.logprocessor.historical.embedding.IncidentRetrievalService;
+import com.aiincident.logprocessor.historical.embedding.SemanticSearchResult;
 import java.time.Instant;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,21 +32,24 @@ public class IncidentController {
     private final IncidentService incidentService;
     private final IncidentRepository incidentRepository;
     private final IncidentCorrelationService correlationService;
+    private final IncidentRetrievalService incidentRetrievalService;
 
     public IncidentController(
             IncidentService incidentService,
             IncidentRepository incidentRepository) {
-        this(incidentService, incidentRepository, null);
+        this(incidentService, incidentRepository, null, null);
     }
 
     @Autowired
     public IncidentController(
             IncidentService incidentService,
             IncidentRepository incidentRepository,
-            @Autowired(required = false) IncidentCorrelationService correlationService) {
+            @Autowired(required = false) IncidentCorrelationService correlationService,
+            @Autowired(required = false) IncidentRetrievalService incidentRetrievalService) {
         this.incidentService = incidentService;
         this.incidentRepository = incidentRepository;
         this.correlationService = correlationService;
+        this.incidentRetrievalService = incidentRetrievalService;
     }
 
     /**
@@ -85,6 +91,58 @@ public class IncidentController {
         }
         List<IncidentEvidence> evidence = incidentService.getEvidenceByIncidentId(id);
         return ResponseEntity.ok(evidence);
+    }
+
+    /**
+     * Retrieve historically similar incidents for a current active incident.
+     * Example: GET /incidents/1/similar?topK=5
+     */
+    @GetMapping("/{id}/similar")
+    public ResponseEntity<List<SemanticSearchResult>> getSimilarIncidents(
+            @PathVariable String id,
+            @RequestParam(defaultValue = "5") Integer topK) {
+        if (incidentRetrievalService == null) {
+            return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
+        }
+        if (incidentRetrievalService.resolveIncident(id).isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        List<SemanticSearchResult> similar = incidentRetrievalService.findSimilarIncidents(id, topK);
+        return ResponseEntity.ok(similar);
+    }
+
+    /**
+     * Retrieve actionable operational runbooks for mitigating a current active incident.
+     * Example: GET /incidents/1/runbooks?topK=3
+     */
+    @GetMapping("/{id}/runbooks")
+    public ResponseEntity<List<SemanticSearchResult>> getRelevantRunbooks(
+            @PathVariable String id,
+            @RequestParam(defaultValue = "3") Integer topK) {
+        if (incidentRetrievalService == null) {
+            return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
+        }
+        if (incidentRetrievalService.resolveIncident(id).isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        List<SemanticSearchResult> runbooks = incidentRetrievalService.findRelevantRunbooks(id, topK);
+        return ResponseEntity.ok(runbooks);
+    }
+
+    /**
+     * Retrieve full operational knowledge context (similar incidents + runbooks + postmortems) for an incident.
+     * Example: GET /incidents/1/context?topK=3
+     */
+    @GetMapping("/{id}/context")
+    public ResponseEntity<IncidentRetrievalContext> getIncidentContext(
+            @PathVariable String id,
+            @RequestParam(defaultValue = "3") Integer topK) {
+        if (incidentRetrievalService == null) {
+            return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
+        }
+        return incidentRetrievalService.getIncidentRetrievalContext(id, topK)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     /**

@@ -235,6 +235,17 @@ Semantic search over operational knowledge base using vector embeddings and cosi
   - `GET /api/knowledge/relevant-runbooks`: Find actionable runbooks for mitigating an ongoing failure scenario.
   - `GET /api/knowledge/relevant-postmortems`: Find relevant post-mortem records.
 
+## Incident Retrieval Pipeline
+
+Connect current/active incidents to the operational knowledge retrieval pipeline (`Current Incident -> Incident Summary -> Embedding -> pgvector -> Historical Incidents + Runbooks`):
+- **Incident Knowledge Connector**:
+  - [IncidentRetrievalService](file:///c:/Users/admin/Desktop/Projects/AI-SRE/incident-engine/log-processor/src/main/java/com/aiincident/logprocessor/historical/embedding/IncidentRetrievalService.java): Synthesizes rich incident summaries (title, services, root cause service, descriptions, affected services, correlated error evidence) and executes vector similarity queries.
+  - [IncidentRetrievalContext](file:///c:/Users/admin/Desktop/Projects/AI-SRE/incident-engine/log-processor/src/main/java/com/aiincident/logprocessor/historical/embedding/IncidentRetrievalContext.java): Consolidated DTO aggregating similar incidents, mitigation runbooks, and post-mortems for an incident.
+- **REST Endpoints**:
+  - `GET /incidents/{id}/similar`: Retrieve top historically similar incidents for an active incident.
+  - `GET /incidents/{id}/runbooks`: Retrieve actionable operational runbooks for mitigating an active incident.
+  - `GET /incidents/{id}/context`: Retrieve complete operational knowledge context (similar incidents + runbooks + postmortems).
+
 ## Future Phases
 
 1. Extend the service domain APIs and PostgreSQL persistence.

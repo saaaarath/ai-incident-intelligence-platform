@@ -208,14 +208,19 @@ Comprehensive operational knowledge documentation structured for human operators
     - `GET /api/knowledge/{documentId}`: Retrieve unified document by canonical ID (e.g. `INC:HIST-INC-001`, `RB:RB-DB-001`, `PM:PM-HIST-INC-001`).
     - `POST /api/knowledge/seed`: Trigger full operational knowledge re-seeding into PostgreSQL.
 
-## pgvector Vector Database Integration
+## Document Embedding Pipeline
 
-Vector embedding persistence powered by PostgreSQL `pgvector`:
-- **Docker Compose Configuration**: Uses `pgvector/pgvector:pg16` with the `vector` extension auto-initialized via `/docker-entrypoint-initdb.d/init-pgvector.sql`.
-- **Document Embeddings Schema**:
-  - `document_embeddings` table stores `documentId`, `documentType`, `content`, `chunk`, `embedding` (`vector`), `metadata` (JSON), `chunkIndex`, and `createdAt`.
-  - [DocumentEmbedding](file:///c:/Users/admin/Desktop/Projects/AI-SRE/incident-engine/log-processor/src/main/java/com/aiincident/logprocessor/historical/DocumentEmbedding.java) JPA Entity with [EmbeddingConverter](file:///c:/Users/admin/Desktop/Projects/AI-SRE/incident-engine/log-processor/src/main/java/com/aiincident/logprocessor/historical/EmbeddingConverter.java) for seamless float array vector persistence.
-  - [DocumentEmbeddingService](file:///c:/Users/admin/Desktop/Projects/AI-SRE/incident-engine/log-processor/src/main/java/com/aiincident/logprocessor/historical/DocumentEmbeddingService.java) providing cosine similarity, Euclidean distance, and dot product vector mathematics.
+Operational knowledge embedding pipeline (`Document -> Chunk -> Embedding Model/API -> pgvector`):
+- **Pipeline Architecture**:
+  - [DocumentChunker](file:///c:/Users/admin/Desktop/Projects/AI-SRE/incident-engine/log-processor/src/main/java/com/aiincident/logprocessor/historical/embedding/DocumentChunker.java): Markdown section and paragraph-aware chunking with configurable size and overlap.
+  - [EmbeddingProperties](file:///c:/Users/admin/Desktop/Projects/AI-SRE/incident-engine/log-processor/src/main/java/com/aiincident/logprocessor/historical/embedding/EmbeddingProperties.java): Configurable provider settings (`embedding.provider`, `embedding.model`, `embedding.dimension`, `embedding.api-key`, `embedding.api-url`, `embedding.chunk-size`, `embedding.chunk-overlap`, `embedding.auto-index-on-startup`, `embedding.timeout-ms`). Secrets read via environment variables (no hardcoded keys).
+  - [EmbeddingProvider](file:///c:/Users/admin/Desktop/Projects/AI-SRE/incident-engine/log-processor/src/main/java/com/aiincident/logprocessor/historical/embedding/EmbeddingProvider.java): Provider abstraction with [DeterministicMockEmbeddingProvider](file:///c:/Users/admin/Desktop/Projects/AI-SRE/incident-engine/log-processor/src/main/java/com/aiincident/logprocessor/historical/embedding/DeterministicMockEmbeddingProvider.java) (reproducible, normalized unit-vectors for test/offline) and [HttpEmbeddingProvider](file:///c:/Users/admin/Desktop/Projects/AI-SRE/incident-engine/log-processor/src/main/java/com/aiincident/logprocessor/historical/embedding/HttpEmbeddingProvider.java) (OpenAI/Ollama REST integration).
+  - [EmbeddingPipelineService](file:///c:/Users/admin/Desktop/Projects/AI-SRE/incident-engine/log-processor/src/main/java/com/aiincident/logprocessor/historical/embedding/EmbeddingPipelineService.java): Orchestration service with dimension validation, graceful failure handling, and idempotent PostgreSQL persistence.
+  - Automatic startup embedding indexing for all Historical Incidents, Postmortems, and Runbooks.
+- **REST Endpoints**:
+  - `POST /api/embeddings/index`: Trigger full or type-filtered embedding generation.
+  - `GET /api/embeddings`: Query stored embeddings by `documentId` or `documentType`.
+  - `GET /api/embeddings/stats`: Get metrics on total vector records, active provider, model, dimension, and chunk configuration.
 
 ## Future Phases
 

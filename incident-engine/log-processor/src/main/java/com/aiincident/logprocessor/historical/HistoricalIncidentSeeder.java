@@ -1,15 +1,19 @@
 package com.aiincident.logprocessor.historical;
 
+import com.aiincident.logprocessor.historical.embedding.EmbeddingPipelineService;
+import com.aiincident.logprocessor.historical.embedding.EmbeddingProperties;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Seeder component that populates PostgreSQL with historical incidents, runbooks, and postmortems on startup.
+ * Seeder component that populates PostgreSQL with historical incidents, runbooks, and postmortems on startup,
+ * and triggers vector embedding generation if enabled.
  */
 @Component
 public class HistoricalIncidentSeeder implements ApplicationRunner {
@@ -19,19 +23,36 @@ public class HistoricalIncidentSeeder implements ApplicationRunner {
     private final HistoricalIncidentRepository incidentRepository;
     private final RunbookRepository runbookRepository;
     private final PostmortemRepository postmortemRepository;
+    private final ObjectProvider<EmbeddingPipelineService> embeddingPipelineServiceProvider;
+    private final EmbeddingProperties embeddingProperties;
 
     public HistoricalIncidentSeeder(
             HistoricalIncidentRepository incidentRepository,
             RunbookRepository runbookRepository,
-            PostmortemRepository postmortemRepository) {
+            PostmortemRepository postmortemRepository,
+            ObjectProvider<EmbeddingPipelineService> embeddingPipelineServiceProvider,
+            EmbeddingProperties embeddingProperties) {
         this.incidentRepository = incidentRepository;
         this.runbookRepository = runbookRepository;
         this.postmortemRepository = postmortemRepository;
+        this.embeddingPipelineServiceProvider = embeddingPipelineServiceProvider;
+        this.embeddingProperties = embeddingProperties;
     }
 
     @Override
     public void run(ApplicationArguments args) {
         seedAllOperationalKnowledge();
+
+        if (embeddingProperties.isAutoIndexOnStartup()) {
+            EmbeddingPipelineService embeddingPipelineService = embeddingPipelineServiceProvider.getIfAvailable();
+            if (embeddingPipelineService != null) {
+                try {
+                    embeddingPipelineService.indexAllDocuments();
+                } catch (Exception e) {
+                    log.warn("Auto-indexing embeddings on startup encountered error: {}", e.getMessage());
+                }
+            }
+        }
     }
 
     @Transactional

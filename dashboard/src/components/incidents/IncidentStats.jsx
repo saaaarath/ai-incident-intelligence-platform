@@ -1,5 +1,6 @@
 import React from 'react';
 import { AlertCircle, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
+import { Card, CardContent } from '../ui/card';
 
 export function IncidentStats({ incidents = [] }) {
   const total = incidents.length;
@@ -9,46 +10,54 @@ export function IncidentStats({ incidents = [] }) {
   const resolved = incidents.filter(i => (i.status || '').toUpperCase() === 'RESOLVED' || (i.status || '').toUpperCase() === 'CLOSED').length;
 
   return (
-    <div className="stats-grid">
-      <div className="stat-card">
-        <div className="stat-label">
-          <span>Active Open</span>
-          <AlertCircle size={16} color="#f43f5e" />
-        </div>
-        <div className="stat-value" style={{ color: open > 0 ? '#f43f5e' : 'inherit' }}>
-          {open}
-        </div>
-      </div>
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <Card className="hover:border-gray-700 transition-colors">
+        <CardContent className="p-5 flex flex-col gap-2">
+          <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-gray-400">
+            <span>Active Open</span>
+            <AlertCircle className="h-4 w-4 text-rose-500" />
+          </div>
+          <div className="text-2xl font-bold font-mono text-rose-400">
+            {open}
+          </div>
+        </CardContent>
+      </Card>
 
-      <div className="stat-card">
-        <div className="stat-label">
-          <span>Investigating</span>
-          <Clock size={16} color="#0ea5e9" />
-        </div>
-        <div className="stat-value" style={{ color: investigating > 0 ? '#0ea5e9' : 'inherit' }}>
-          {investigating}
-        </div>
-      </div>
+      <Card className="hover:border-gray-700 transition-colors">
+        <CardContent className="p-5 flex flex-col gap-2">
+          <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-gray-400">
+            <span>Investigating</span>
+            <Clock className="h-4 w-4 text-sky-400" />
+          </div>
+          <div className="text-2xl font-bold font-mono text-sky-400">
+            {investigating}
+          </div>
+        </CardContent>
+      </Card>
 
-      <div className="stat-card">
-        <div className="stat-label">
-          <span>Critical Severity</span>
-          <AlertTriangle size={16} color="#ef4444" />
-        </div>
-        <div className="stat-value" style={{ color: critical > 0 ? '#ef4444' : 'inherit' }}>
-          {critical}
-        </div>
-      </div>
+      <Card className="hover:border-gray-700 transition-colors">
+        <CardContent className="p-5 flex flex-col gap-2">
+          <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-gray-400">
+            <span>Critical Severity</span>
+            <AlertTriangle className="h-4 w-4 text-red-500" />
+          </div>
+          <div className="text-2xl font-bold font-mono text-red-400">
+            {critical}
+          </div>
+        </CardContent>
+      </Card>
 
-      <div className="stat-card">
-        <div className="stat-label">
-          <span>Resolved / Closed</span>
-          <CheckCircle size={16} color="#10b981" />
-        </div>
-        <div className="stat-value" style={{ color: '#10b981' }}>
-          {resolved}
-        </div>
-      </div>
+      <Card className="hover:border-gray-700 transition-colors">
+        <CardContent className="p-5 flex flex-col gap-2">
+          <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-gray-400">
+            <span>Resolved / Closed</span>
+            <CheckCircle className="h-4 w-4 text-emerald-400" />
+          </div>
+          <div className="text-2xl font-bold font-mono text-emerald-400">
+            {resolved}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

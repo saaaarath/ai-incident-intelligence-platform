@@ -2,15 +2,28 @@ import React, { useState, useEffect } from 'react';
 import { SeverityBadge, StatusBadge } from '../common/Badge';
 import { incidentApi } from '../../services/api';
 import { 
-  X, 
-  CheckCircle, 
+  Sheet, 
+  SheetHeader, 
+  SheetTitle, 
+  SheetDescription, 
+  SheetContent, 
+  SheetFooter, 
+  SheetClose 
+} from '../ui/sheet';
+import { Button } from '../ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { Separator } from '../ui/separator';
+import { 
+  CheckCircle2, 
   PlayCircle, 
   Archive, 
-  FileText, 
+  Server, 
+  Clock, 
+  Activity, 
   Layers, 
-  Sparkles,
-  AlertCircle,
-  Loader2
+  Fingerprint,
+  Loader2,
+  AlertCircle
 } from 'lucide-react';
 
 export function IncidentDetail({ incident, onClose, onIncidentUpdated }) {
@@ -64,177 +77,179 @@ export function IncidentDetail({ incident, onClose, onIncidentUpdated }) {
   };
 
   const status = (incident.status || '').toUpperCase();
+  const formattedStarted = incident.startedAt ? new Date(incident.startedAt).toLocaleString() : 'N/A';
+  const formattedDetected = incident.detectedAt ? new Date(incident.detectedAt).toLocaleString() : 'N/A';
 
   return (
-    <div className="detail-modal-overlay" onClick={onClose}>
-      <div className="detail-drawer" onClick={(e) => e.stopPropagation()}>
-        <div className="drawer-header">
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.4rem' }}>
-              <span className="incident-id-tag">INC-{incident.id}</span>
-              <SeverityBadge severity={incident.severity} />
-              <StatusBadge status={incident.status} />
-            </div>
-            <h2 style={{ fontSize: '1.2rem', fontWeight: 600 }}>{incident.title || 'Incident Details'}</h2>
+    <Sheet open={!!incident} onOpenChange={(open) => !open && onClose()}>
+      {/* Header */}
+      <SheetHeader>
+        <div className="flex flex-col gap-2 flex-1">
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-xs font-semibold text-gray-400">INC-{incident.id}</span>
+            <SeverityBadge severity={incident.severity} />
+            <StatusBadge status={incident.status} />
           </div>
-          <button className="btn-icon" onClick={onClose}>
-            <X size={18} />
-          </button>
+          <SheetTitle>{incident.title || 'Incident Details'}</SheetTitle>
+        </div>
+        <SheetClose onClose={onClose} />
+      </SheetHeader>
+
+      {/* Content */}
+      <SheetContent>
+        {actionError && (
+          <div className="p-3.5 rounded-lg bg-red-950/40 border border-red-500/30 text-red-400 text-xs flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            <span>{actionError}</span>
+          </div>
+        )}
+
+        {/* Overview Grid */}
+        <div className="flex flex-col gap-2">
+          <h4 className="text-xs font-semibold uppercase tracking-wider text-gray-400">Metadata & Timeline</h4>
+          <div className="grid grid-cols-2 gap-3 p-4 rounded-lg bg-gray-950/60 border border-gray-800 text-xs">
+            <div className="flex flex-col gap-1">
+              <span className="text-gray-500">Primary Service</span>
+              <div className="flex items-center gap-1.5 font-mono text-gray-200">
+                <Server className="h-3.5 w-3.5 text-indigo-400" />
+                <span>{incident.primaryService || 'N/A'}</span>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <span className="text-gray-500">Anomaly Metric</span>
+              <div className="flex items-center gap-1.5 font-mono text-gray-200">
+                <Activity className="h-3.5 w-3.5 text-indigo-400" />
+                <span className="truncate">{incident.metric || 'N/A'}</span>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <span className="text-gray-500">Started Time</span>
+              <div className="flex items-center gap-1.5 font-mono text-gray-300">
+                <Clock className="h-3.5 w-3.5 text-gray-500" />
+                <span>{formattedStarted}</span>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <span className="text-gray-500">Detected Time</span>
+              <div className="flex items-center gap-1.5 font-mono text-gray-300">
+                <Clock className="h-3.5 w-3.5 text-gray-500" />
+                <span>{formattedDetected}</span>
+              </div>
+            </div>
+
+            {incident.fingerprint && (
+              <div className="col-span-2 flex flex-col gap-1 pt-2 border-t border-gray-800/80">
+                <span className="text-gray-500">Incident Fingerprint</span>
+                <div className="flex items-center gap-1.5 font-mono text-[11px] text-gray-400 truncate">
+                  <Fingerprint className="h-3.5 w-3.5 text-gray-500" />
+                  <span>{incident.fingerprint}</span>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
-        <div className="drawer-content">
-          {actionError && (
-            <div style={{
-              background: 'rgba(239, 68, 68, 0.15)',
-              border: '1px solid rgba(239, 68, 68, 0.3)',
-              color: '#f87171',
-              padding: '0.75rem 1rem',
-              borderRadius: 'var(--radius-md)',
-              fontSize: '0.8125rem'
-            }}>
-              {actionError}
-            </div>
-          )}
-
-          {/* Metadata Grid */}
-          <div className="drawer-section">
-            <h4 className="section-heading">Overview</h4>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(2, 1fr)',
-              gap: '0.75rem',
-              background: 'var(--bg-primary)',
-              padding: '1rem',
-              borderRadius: 'var(--radius-md)',
-              border: '1px solid var(--border-subtle)',
-              fontSize: '0.8125rem'
-            }}>
-              <div>
-                <span style={{ color: 'var(--text-muted)' }}>Primary Service: </span>
-                <strong>{incident.primaryService || 'N/A'}</strong>
-              </div>
-              <div>
-                <span style={{ color: 'var(--text-muted)' }}>Metric: </span>
-                <strong>{incident.metric || 'N/A'}</strong>
-              </div>
-              <div>
-                <span style={{ color: 'var(--text-muted)' }}>Started At: </span>
-                <span>{incident.startedAt ? new Date(incident.startedAt).toLocaleString() : 'N/A'}</span>
-              </div>
-              <div>
-                <span style={{ color: 'var(--text-muted)' }}>Detected At: </span>
-                <span>{incident.detectedAt ? new Date(incident.detectedAt).toLocaleString() : 'N/A'}</span>
-              </div>
+        {/* Description */}
+        {incident.description && (
+          <div className="flex flex-col gap-2">
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-gray-400">Description</h4>
+            <div className="p-4 rounded-lg bg-gray-950/60 border border-gray-800 text-sm text-gray-300 leading-relaxed">
+              {incident.description}
             </div>
           </div>
+        )}
 
-          {/* Description */}
-          {incident.description && (
-            <div className="drawer-section">
-              <h4 className="section-heading">Description</h4>
-              <div style={{
-                background: 'var(--bg-primary)',
-                padding: '1rem',
-                borderRadius: 'var(--radius-md)',
-                border: '1px solid var(--border-subtle)',
-                fontSize: '0.85rem',
-                color: 'var(--text-secondary)',
-                lineHeight: 1.6
-              }}>
-                {incident.description}
-              </div>
+        {/* Correlated Evidence */}
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-gray-400">Correlated Evidence</h4>
+            <span className="text-xs text-gray-500 font-mono">
+              {evidence.length} record{evidence.length !== 1 ? 's' : ''}
+            </span>
+          </div>
+
+          {loadingEvidence ? (
+            <div className="p-6 text-center text-xs text-gray-500 flex items-center justify-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin text-indigo-500" />
+              <span>Fetching telemetry evidence...</span>
             </div>
-          )}
-
-          {/* Correlated Evidence */}
-          <div className="drawer-section">
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <h4 className="section-heading">Correlated Evidence</h4>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                {evidence.length} record{evidence.length !== 1 ? 's' : ''}
-              </span>
+          ) : evidence.length === 0 ? (
+            <div className="p-6 rounded-lg bg-gray-950/40 border border-dashed border-gray-800 text-center text-xs text-gray-500">
+              No correlated anomaly evidence records found for this incident.
             </div>
-
-            {loadingEvidence ? (
-              <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--text-muted)' }}>
-                Loading evidence...
-              </div>
-            ) : evidence.length === 0 ? (
-              <div style={{
-                background: 'var(--bg-primary)',
-                padding: '1rem',
-                borderRadius: 'var(--radius-md)',
-                border: '1px solid var(--border-subtle)',
-                fontSize: '0.8125rem',
-                color: 'var(--text-muted)',
-                textAlign: 'center'
-              }}>
-                No correlated anomaly evidence records found for this incident.
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                {evidence.map((ev, idx) => (
-                  <div key={ev.id || idx} className="evidence-card">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
-                        {ev.service || 'Service'}: {ev.metric || 'Anomaly'}
-                      </span>
-                      <SeverityBadge severity={ev.severity} />
-                    </div>
-                    {ev.description && <span style={{ color: 'var(--text-secondary)' }}>{ev.description}</span>}
-                    {ev.anomalyScore && (
-                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                        Score: {ev.anomalyScore}
-                      </span>
-                    )}
+          ) : (
+            <div className="flex flex-col gap-2.5">
+              {evidence.map((ev, idx) => (
+                <Card key={ev.id || idx} className="bg-gray-950/80 border-gray-800 p-3.5 flex flex-col gap-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-semibold text-gray-200">
+                      {ev.service || 'Service'}: {ev.metric || 'Anomaly'}
+                    </span>
+                    <SeverityBadge severity={ev.severity} />
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Lifecycle Action Buttons */}
-          <div className="action-bar">
-            {status === 'OPEN' && (
-              <button
-                className="btn btn-primary"
-                onClick={() => handleAction('ACKNOWLEDGE')}
-                disabled={isUpdating}
-              >
-                <PlayCircle size={16} />
-                <span>{isUpdating ? 'Updating...' : 'Acknowledge Incident'}</span>
-              </button>
-            )}
-
-            {(status === 'OPEN' || status === 'INVESTIGATING') && (
-              <button
-                className="btn btn-secondary"
-                style={{ borderColor: 'rgba(16, 185, 129, 0.4)', color: '#10b981' }}
-                onClick={() => handleAction('RESOLVE')}
-                disabled={isUpdating}
-              >
-                <CheckCircle size={16} />
-                <span>{isUpdating ? 'Updating...' : 'Resolve Incident'}</span>
-              </button>
-            )}
-
-            {status === 'RESOLVED' && (
-              <button
-                className="btn btn-secondary"
-                onClick={() => handleAction('CLOSE')}
-                disabled={isUpdating}
-              >
-                <Archive size={16} />
-                <span>{isUpdating ? 'Updating...' : 'Close Incident'}</span>
-              </button>
-            )}
-
-            <button className="btn btn-secondary" onClick={onClose} style={{ marginLeft: 'auto' }}>
-              Close Panel
-            </button>
-          </div>
+                  {ev.description && (
+                    <p className="text-xs text-gray-400">{ev.description}</p>
+                  )}
+                  {ev.anomalyScore !== undefined && ev.anomalyScore !== null && (
+                    <span className="text-[11px] font-mono text-gray-500">
+                      Score: {ev.anomalyScore}
+                    </span>
+                  )}
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
-      </div>
-    </div>
+      </SheetContent>
+
+      {/* Footer Actions */}
+      <SheetFooter>
+        {status === 'OPEN' && (
+          <Button
+            variant="default"
+            size="sm"
+            onClick={() => handleAction('ACKNOWLEDGE')}
+            disabled={isUpdating}
+            className="gap-1.5"
+          >
+            <PlayCircle className="h-4 w-4" />
+            <span>{isUpdating ? 'Updating...' : 'Acknowledge Incident'}</span>
+          </Button>
+        )}
+
+        {(status === 'OPEN' || status === 'INVESTIGATING') && (
+          <Button
+            variant="success"
+            size="sm"
+            onClick={() => handleAction('RESOLVE')}
+            disabled={isUpdating}
+            className="gap-1.5"
+          >
+            <CheckCircle2 className="h-4 w-4" />
+            <span>{isUpdating ? 'Updating...' : 'Resolve Incident'}</span>
+          </Button>
+        )}
+
+        {status === 'RESOLVED' && (
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => handleAction('CLOSE')}
+            disabled={isUpdating}
+            className="gap-1.5"
+          >
+            <Archive className="h-4 w-4" />
+            <span>{isUpdating ? 'Updating...' : 'Close Incident'}</span>
+          </Button>
+        )}
+
+        <Button variant="outline" size="sm" onClick={onClose} className="ml-auto">
+          Close Inspector
+        </Button>
+      </SheetFooter>
+    </Sheet>
   );
 }

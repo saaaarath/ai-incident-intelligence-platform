@@ -14,21 +14,21 @@ export function AppShell({
   children
 }) {
   return (
-    <div className="app-layout">
+    <div className="flex h-screen w-screen overflow-hidden bg-gray-950 text-gray-100 antialiased">
       <Sidebar
         currentView={currentView}
         onViewChange={onViewChange}
         openIncidentsCount={openIncidentsCount}
         backendStatus={backendStatus}
       />
-      <div className="main-area">
+      <div className="flex-1 flex flex-col overflow-hidden bg-gray-950">
         <Navbar
           title={viewTitle}
           onRefresh={onRefresh}
           isRefreshing={isRefreshing}
           activeIncidentsCount={activeIncidentsCount}
         />
-        <main className="content-container">
+        <main className="flex-1 overflow-y-auto p-8 flex flex-col gap-6">
           {children}
         </main>
       </div>

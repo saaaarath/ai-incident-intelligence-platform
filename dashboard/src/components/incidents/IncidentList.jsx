@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { IncidentStats } from './IncidentStats';
 import { IncidentFilters } from './IncidentFilters';
+import { IncidentTable } from './IncidentTable';
 import { IncidentCard } from './IncidentCard';
 import { IncidentDetail } from './IncidentDetail';
 import { LoadingState } from '../common/LoadingState';
@@ -18,6 +19,7 @@ export function IncidentList({
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [severityFilter, setSeverityFilter] = useState('ALL');
   const [serviceFilter, setServiceFilter] = useState('ALL');
+  const [viewMode, setViewMode] = useState('table');
   const [selectedIncident, setSelectedIncident] = useState(null);
 
   // Extract unique services from incident list for filtering
@@ -50,10 +52,11 @@ export function IncidentList({
         const titleMatch = (inc.title || '').toLowerCase().includes(query);
         const descMatch = (inc.description || '').toLowerCase().includes(query);
         const serviceMatch = (inc.primaryService || '').toLowerCase().includes(query);
+        const metricMatch = (inc.metric || '').toLowerCase().includes(query);
         const fingerprintMatch = (inc.fingerprint || '').toLowerCase().includes(query);
         const idMatch = String(inc.id || '').includes(query);
 
-        if (!titleMatch && !descMatch && !serviceMatch && !fingerprintMatch && !idMatch) {
+        if (!titleMatch && !descMatch && !serviceMatch && !metricMatch && !fingerprintMatch && !idMatch) {
           return false;
         }
       }
@@ -69,7 +72,7 @@ export function IncidentList({
   };
 
   return (
-    <>
+    <div className="flex flex-col gap-6">
       <IncidentStats incidents={incidents} />
 
       <IncidentFilters
@@ -82,9 +85,11 @@ export function IncidentList({
         serviceFilter={serviceFilter}
         onServiceChange={setServiceFilter}
         services={availableServices}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
       />
 
-      {loading && <LoadingState message="Fetching live incidents from AI-SRE backend..." />}
+      {loading && <LoadingState message="Fetching real-time incident telemetry..." />}
 
       {!loading && error && (
         <ErrorState
@@ -105,16 +110,24 @@ export function IncidentList({
       )}
 
       {!loading && !error && filteredIncidents.length > 0 && (
-        <div className="incident-list">
-          {filteredIncidents.map((incident) => (
-            <IncidentCard
-              key={incident.id}
-              incident={incident}
-              isSelected={selectedIncident && selectedIncident.id === incident.id}
-              onClick={setSelectedIncident}
-            />
-          ))}
-        </div>
+        viewMode === 'table' ? (
+          <IncidentTable
+            incidents={filteredIncidents}
+            selectedIncidentId={selectedIncident?.id}
+            onSelectIncident={setSelectedIncident}
+          />
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {filteredIncidents.map((incident) => (
+              <IncidentCard
+                key={incident.id}
+                incident={incident}
+                isSelected={selectedIncident?.id === incident.id}
+                onClick={setSelectedIncident}
+              />
+            ))}
+          </div>
+        )
       )}
 
       {selectedIncident && (
@@ -124,6 +137,6 @@ export function IncidentList({
           onIncidentUpdated={handleIncidentUpdated}
         />
       )}
-    </>
+    </div>
   );
 }

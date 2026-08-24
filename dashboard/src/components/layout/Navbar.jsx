@@ -1,41 +1,34 @@
 import React from 'react';
-import { RefreshCw, Radio, Bell } from 'lucide-react';
+import { RefreshCw, Radio } from 'lucide-react';
+import { Button } from '../ui/button';
+import { Badge } from '../ui/badge';
+import { cn } from '../../lib/utils';
 
 export function Navbar({ title, onRefresh, isRefreshing, activeIncidentsCount }) {
   return (
-    <header className="top-navbar">
-      <div className="navbar-left">
-        <h2 className="page-title">{title}</h2>
+    <header className="h-16 px-8 bg-gray-900/80 border-b border-gray-800 flex items-center justify-between shrink-0 backdrop-blur-md">
+      <div className="flex items-center gap-4">
+        <h2 className="text-lg font-semibold tracking-tight text-gray-100">{title}</h2>
       </div>
 
-      <div className="navbar-right">
+      <div className="flex items-center gap-3">
         {activeIncidentsCount > 0 && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.4rem',
-            padding: '0.35rem 0.75rem',
-            background: 'rgba(239, 68, 68, 0.12)',
-            border: '1px solid rgba(239, 68, 68, 0.3)',
-            borderRadius: '9999px',
-            fontSize: '0.75rem',
-            color: '#f87171',
-            fontWeight: 500
-          }}>
-            <Radio size={12} className="status-dot checking" />
+          <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-rose-500/15 border border-rose-500/30 text-rose-400 text-xs font-semibold">
+            <span className="h-2 w-2 rounded-full bg-rose-500 animate-pulse-dot" />
             <span>{activeIncidentsCount} Active Alert{activeIncidentsCount > 1 ? 's' : ''}</span>
           </div>
         )}
 
-        <button 
-          className="btn btn-secondary btn-sm"
+        <Button
+          variant="outline"
+          size="sm"
           onClick={onRefresh}
           disabled={isRefreshing}
-          title="Refresh Data"
+          className="gap-2 text-xs"
         >
-          <RefreshCw size={14} className={isRefreshing ? 'spinner' : ''} />
+          <RefreshCw className={cn("h-3.5 w-3.5", isRefreshing && "animate-spin text-indigo-400")} />
           <span>{isRefreshing ? 'Syncing...' : 'Refresh'}</span>
-        </button>
+        </Button>
       </div>
     </header>
   );

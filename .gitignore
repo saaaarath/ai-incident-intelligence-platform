@@ -20,6 +20,9 @@ dist/
 .env
 .env.*
 !.env.example
+*application-local.properties
+*application-secrets.properties
+application-local.properties
 
 # OS
 .DS_Store

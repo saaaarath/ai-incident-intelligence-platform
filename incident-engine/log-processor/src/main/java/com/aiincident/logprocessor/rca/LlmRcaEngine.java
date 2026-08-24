@@ -16,7 +16,7 @@ import org.springframework.stereotype.Service;
 /**
  * AI Root Cause Analysis (RCA) Engine.
  * Takes structured incident context, prompts the LLM with rigorous RCA instructions,
- * parses the structured RCA report, and strictly validates evidence grounding.
+ * parses the structured RCA report, strictly validates evidence grounding, and persists reports.
  */
 @Service
 public class LlmRcaEngine {
@@ -27,6 +27,7 @@ public class LlmRcaEngine {
     private final RcaContextBuilder contextBuilder;
     private final RcaPromptFormatter promptFormatter;
     private final RcaEvidenceGroundingValidator validator;
+    private final RcaPersistenceService persistenceService;
     private final ObjectMapper objectMapper;
 
     @Autowired
@@ -35,11 +36,13 @@ public class LlmRcaEngine {
             RcaContextBuilder contextBuilder,
             RcaPromptFormatter promptFormatter,
             @Autowired(required = false) RcaEvidenceGroundingValidator validator,
+            @Autowired(required = false) RcaPersistenceService persistenceService,
             @Autowired(required = false) ObjectMapper objectMapper) {
         this.llmProvider = llmProvider;
         this.contextBuilder = contextBuilder;
         this.promptFormatter = promptFormatter;
         this.validator = (validator != null) ? validator : new RcaEvidenceGroundingValidator();
+        this.persistenceService = persistenceService;
         this.objectMapper = (objectMapper != null)
                 ? objectMapper.copy().registerModule(new JavaTimeModule()).configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
                 : new ObjectMapper().registerModule(new JavaTimeModule()).configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -50,32 +53,62 @@ public class LlmRcaEngine {
             RcaContextBuilder contextBuilder,
             RcaPromptFormatter promptFormatter,
             ObjectMapper objectMapper) {
-        this(llmProvider, contextBuilder, promptFormatter, new RcaEvidenceGroundingValidator(), objectMapper);
+        this(llmProvider, contextBuilder, promptFormatter, new RcaEvidenceGroundingValidator(), null, objectMapper);
     }
 
     /**
-     * Analyze an incident identified by numeric ID or UUID string.
+     * Analyze an incident identified by numeric ID or UUID string and persist the report.
      */
     public Optional<RcaReport> analyzeIncident(String incidentIdentifier) {
         return analyzeIncident(incidentIdentifier, RcaContextBuilder.RcaContextOptions.defaults());
     }
 
     /**
-     * Analyze an incident with custom context builder options.
+     * Analyze an incident with custom context builder options and persist the report.
      */
     public Optional<RcaReport> analyzeIncident(String incidentIdentifier, RcaContextBuilder.RcaContextOptions options) {
         Optional<RcaContext> contextOpt = contextBuilder.buildContext(incidentIdentifier, options);
-        return contextOpt.map(this::analyzeContext);
+        if (contextOpt.isEmpty()) {
+            return Optional.empty();
+        }
+
+        RcaContext context = contextOpt.get();
+        RcaReport report = analyzeContext(context);
+
+        // Persist report if persistence service is available
+        if (persistenceService != null) {
+            Long numericId = context.summary() != null ? context.summary().id() : null;
+            report = persistenceService.saveReport(report, numericId, incidentIdentifier);
+        }
+
+        return Optional.of(report);
     }
 
     /**
-     * Analyze an incident identified by Long database ID.
+     * Analyze an incident identified by Long database ID and persist the report.
      */
     public Optional<RcaReport> analyzeIncident(Long incidentId) {
         if (incidentId == null) {
             return Optional.empty();
         }
         return analyzeIncident(String.valueOf(incidentId));
+    }
+
+    /**
+     * Retrieve the latest persisted analysis for an incident.
+     */
+    public Optional<RcaReport> getLatestAnalysis(String incidentIdentifier) {
+        if (persistenceService == null) {
+            return Optional.empty();
+        }
+        return persistenceService.getLatestReport(incidentIdentifier);
+    }
+
+    /**
+     * Check if a persisted analysis already exists for an incident.
+     */
+    public boolean hasActiveAnalysis(String incidentIdentifier) {
+        return persistenceService != null && persistenceService.hasActiveAnalysis(incidentIdentifier);
     }
 
     /**

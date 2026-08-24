@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * Controller exposing the AI Root Cause Analysis (RCA) Context, LLM RCA Engine,
- * and Evidence Grounding Validation APIs.
+ * RCA Persistence, and Evidence Grounding Validation APIs.
  */
 @RestController
 @RequestMapping({"/incidents", "/api/incidents"})
@@ -61,12 +61,14 @@ public class RcaController {
     }
 
     /**
-     * Trigger and retrieve AI Root Cause Analysis (RCA) report for an incident.
-     * Example: POST /incidents/1/rca
+     * Trigger and persist AI Root Cause Analysis for an incident.
+     * Prevents accidental duplicate active analyses unless forceReanalyze=true.
+     * Example: POST /incidents/1/analyze?forceReanalyze=false
      */
-    @PostMapping("/{id}/rca")
-    public ResponseEntity<RcaReport> generateIncidentRca(
+    @PostMapping("/{id}/analyze")
+    public ResponseEntity<RcaReport> analyzeIncident(
             @PathVariable String id,
+            @RequestParam(defaultValue = "false") boolean forceReanalyze,
             @RequestParam(defaultValue = "5") Integer bufferMinutes,
             @RequestParam(defaultValue = "50") Integer maxLogs,
             @RequestParam(defaultValue = "3") Integer historicalTopK,
@@ -74,6 +76,14 @@ public class RcaController {
 
         if (llmRcaEngine == null) {
             return ResponseEntity.notFound().build();
+        }
+
+        // Check for existing persisted analysis to prevent duplicate execution
+        if (!forceReanalyze) {
+            var existingOpt = llmRcaEngine.getLatestAnalysis(id);
+            if (existingOpt.isPresent()) {
+                return ResponseEntity.ok(existingOpt.get());
+            }
         }
 
         RcaContextOptions options = new RcaContextOptions(
@@ -89,6 +99,36 @@ public class RcaController {
     }
 
     /**
+     * Retrieve the latest persisted AI Root Cause Analysis (RCA) report for an incident.
+     * Example: GET /incidents/1/analysis
+     */
+    @GetMapping("/{id}/analysis")
+    public ResponseEntity<RcaReport> getIncidentAnalysis(@PathVariable String id) {
+        if (llmRcaEngine == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        return llmRcaEngine.getLatestAnalysis(id)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    /**
+     * Trigger and retrieve AI Root Cause Analysis (RCA) report for an incident.
+     * Example: POST /incidents/1/rca
+     */
+    @PostMapping("/{id}/rca")
+    public ResponseEntity<RcaReport> generateIncidentRca(
+            @PathVariable String id,
+            @RequestParam(defaultValue = "5") Integer bufferMinutes,
+            @RequestParam(defaultValue = "50") Integer maxLogs,
+            @RequestParam(defaultValue = "3") Integer historicalTopK,
+            @RequestParam(defaultValue = "3") Integer runbookTopK) {
+
+        return analyzeIncident(id, true, bufferMinutes, maxLogs, historicalTopK, runbookTopK);
+    }
+
+    /**
      * Retrieve AI Root Cause Analysis (RCA) report for an incident via GET.
      * Example: GET /incidents/1/rca
      */
@@ -100,7 +140,23 @@ public class RcaController {
             @RequestParam(defaultValue = "3") Integer historicalTopK,
             @RequestParam(defaultValue = "3") Integer runbookTopK) {
 
-        return generateIncidentRca(id, bufferMinutes, maxLogs, historicalTopK, runbookTopK);
+        if (llmRcaEngine == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        // Try getting existing analysis, otherwise generate one
+        return llmRcaEngine.getLatestAnalysis(id)
+                .or(() -> {
+                    RcaContextOptions options = new RcaContextOptions(
+                            bufferMinutes != null ? bufferMinutes : 5,
+                            maxLogs != null ? maxLogs : 50,
+                            historicalTopK != null ? historicalTopK : 3,
+                            runbookTopK != null ? runbookTopK : 3
+                    );
+                    return llmRcaEngine.analyzeIncident(id, options);
+                })
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     /**

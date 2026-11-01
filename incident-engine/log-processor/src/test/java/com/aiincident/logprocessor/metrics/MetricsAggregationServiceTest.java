@@ -1,7 +1,7 @@
 package com.aiincident.logprocessor.metrics;
 
-import com.aiincident.logprocessor.entity.ProcessedLogEvent;
-import com.aiincident.logprocessor.repository.LogEventRepository;
+import com.aiincident.logprocessor.ingestion.ProcessedLogEvent;
+import com.aiincident.logprocessor.ingestion.LogEventRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
 import java.time.Instant;

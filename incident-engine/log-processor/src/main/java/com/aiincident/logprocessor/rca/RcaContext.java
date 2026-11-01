@@ -3,7 +3,7 @@ package com.aiincident.logprocessor.rca;
 import com.aiincident.logprocessor.anomaly.AnomalySeverity;
 import com.aiincident.logprocessor.dependency.ServiceDependency;
 import com.aiincident.logprocessor.dependency.ServiceDependencyService.ServiceTopology;
-import com.aiincident.logprocessor.historical.embedding.SemanticSearchResult;
+import com.aiincident.logprocessor.knowledge.embedding.SemanticSearchResult;
 import com.aiincident.logprocessor.incident.IncidentStatus;
 import com.aiincident.logprocessor.timeline.IncidentTimeline;
 import java.time.Instant;

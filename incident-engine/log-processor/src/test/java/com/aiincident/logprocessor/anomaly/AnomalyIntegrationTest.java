@@ -1,7 +1,7 @@
 package com.aiincident.logprocessor.anomaly;
 
-import com.aiincident.logprocessor.entity.ProcessedLogEvent;
-import com.aiincident.logprocessor.repository.LogEventRepository;
+import com.aiincident.logprocessor.ingestion.ProcessedLogEvent;
+import com.aiincident.logprocessor.ingestion.LogEventRepository;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;

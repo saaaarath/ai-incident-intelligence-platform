@@ -1,8 +1,8 @@
 package com.aiincident.logprocessor.fingerprint;
 
-import com.aiincident.logprocessor.entity.ProcessedLogEvent;
+import com.aiincident.logprocessor.ingestion.ProcessedLogEvent;
 import com.aiincident.logprocessor.incident.EventTypeClassifier;
-import com.aiincident.logprocessor.repository.LogEventRepository;
+import com.aiincident.logprocessor.ingestion.LogEventRepository;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;

@@ -1,9 +1,9 @@
 package com.aiincident.logprocessor;
 
 import com.aiincident.logging.LogEvent;
-import com.aiincident.logprocessor.entity.ProcessedLogEvent;
-import com.aiincident.logprocessor.repository.LogEventRepository;
-import com.aiincident.logprocessor.service.LogProcessorService;
+import com.aiincident.logprocessor.ingestion.ProcessedLogEvent;
+import com.aiincident.logprocessor.ingestion.LogEventRepository;
+import com.aiincident.logprocessor.ingestion.LogProcessorService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import java.time.Instant;

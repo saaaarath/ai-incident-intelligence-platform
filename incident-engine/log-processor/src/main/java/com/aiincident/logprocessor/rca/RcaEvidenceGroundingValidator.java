@@ -1,6 +1,6 @@
 package com.aiincident.logprocessor.rca;
 
-import com.aiincident.logprocessor.historical.embedding.SemanticSearchResult;
+import com.aiincident.logprocessor.knowledge.embedding.SemanticSearchResult;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;

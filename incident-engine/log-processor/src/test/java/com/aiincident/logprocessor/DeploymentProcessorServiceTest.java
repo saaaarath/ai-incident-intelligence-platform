@@ -1,9 +1,9 @@
 package com.aiincident.logprocessor;
 
 import com.aiincident.logging.deployment.DeploymentEvent;
-import com.aiincident.logprocessor.entity.ProcessedDeploymentEvent;
-import com.aiincident.logprocessor.repository.DeploymentEventRepository;
-import com.aiincident.logprocessor.service.DeploymentProcessorService;
+import com.aiincident.logprocessor.ingestion.ProcessedDeploymentEvent;
+import com.aiincident.logprocessor.ingestion.DeploymentEventRepository;
+import com.aiincident.logprocessor.deployment.DeploymentProcessorService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import java.time.Instant;

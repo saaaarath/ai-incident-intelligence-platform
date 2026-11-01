@@ -1,9 +1,9 @@
 package com.aiincident.logprocessor.incident;
 
 import com.aiincident.logprocessor.anomaly.AnomalyRepository;
-import com.aiincident.logprocessor.entity.ProcessedLogEvent;
-import com.aiincident.logprocessor.repository.LogEventRepository;
-import com.aiincident.logprocessor.service.LogProcessorService;
+import com.aiincident.logprocessor.ingestion.ProcessedLogEvent;
+import com.aiincident.logprocessor.ingestion.LogEventRepository;
+import com.aiincident.logprocessor.ingestion.LogProcessorService;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;

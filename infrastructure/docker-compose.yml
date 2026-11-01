@@ -127,6 +127,7 @@ services:
       context: ..
       dockerfile: incident-engine/log-processor/Dockerfile
     environment:
+      SERVER_PORT: 8080
       LOG_PROCESSOR_DB_URL: jdbc:postgresql://postgres:5432/incident_platform
       LOG_PROCESSOR_DB_USERNAME: incident_user
       LOG_PROCESSOR_DB_PASSWORD: incident_password

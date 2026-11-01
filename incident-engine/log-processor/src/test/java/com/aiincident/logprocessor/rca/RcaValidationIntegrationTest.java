@@ -1,8 +1,8 @@
 package com.aiincident.logprocessor.rca;
 
 import com.aiincident.logging.LogEvent;
-import com.aiincident.logprocessor.controller.RcaController;
-import com.aiincident.logprocessor.service.LogProcessorService;
+import com.aiincident.logprocessor.rca.RcaReport;
+import com.aiincident.logprocessor.ingestion.LogProcessorService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.List;
